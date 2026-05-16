@@ -138,11 +138,10 @@ app.post('/api/orders', async (req, res) => {
 });
 
 // ─── PUBLIC ORDER TRACK ───────────────────────────
-app.get('/api/orders/:id', async (req, res) => {
+app.get('/api/orders/track/:id', async (req, res) => {   // ← sirf yeh line badlo
   try {
     const database = await connectDB();
 
-    // Validate ObjectId
     if (!ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid Order ID' });
     }
@@ -171,58 +170,6 @@ app.get('/api/orders/:id', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
-
-// ─── PUBLIC CONTACT ────────────────────────────────
-app.post('/api/contact', async (req, res) => {
-  try {
-    const database = await connectDB();
-    const { name, email, subject, message } = req.body;
-    await database.collection("contact_messages").insertOne({
-      name, email, subject, message,
-      status: 'unread',
-      created_at: new Date()
-    });
-    res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-// ─── STATS ────────────────────────────────────────
-app.get('/api/admin/stats', async (req, res) => {
-  try {
-    const database = await connectDB();
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    const [totalOrders, totalProducts, totalMessages, revenueData, todayOrders, todayRevenue] = await Promise.all([
-      database.collection("orders").countDocuments(),
-      database.collection("products").countDocuments(),
-      database.collection("contact_messages").countDocuments(),
-      database.collection("orders").aggregate([
-        { $group: { _id: null, total: { $sum: "$total_amount" } } }
-      ]).toArray(),
-      database.collection("orders").countDocuments({ created_at: { $gte: todayStart } }),
-      database.collection("orders").aggregate([
-        { $match: { created_at: { $gte: todayStart } } },
-        { $group: { _id: null, total: { $sum: "$total_amount" } } }
-      ]).toArray()
-    ]);
-    const recentOrders = await database.collection("orders")
-      .find().sort({ created_at: -1 }).limit(5)
-      .project({ _id: 1, customer_name: 1, total_amount: 1, status: 1, created_at: 1 })
-      .toArray();
-    res.json({
-      totalOrders, totalProducts, totalMessages,
-      totalRevenue: revenueData[0]?.total || 0,
-      todayOrders,
-      todayRevenue: todayRevenue[0]?.total || 0,
-      recentOrders: recentOrders.map(o => ({
-        id: o._id.toString(),
-        customer: o.customer_name,
-        amount: `Rs ${(o.total_amount || 0).toLocaleString()}`,
-        status: o.status || 'pending',
-        date: new Date(o.created_at).toLocaleDateString()
-      }))
-    });
-  } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 // ─── ORDERS ───────────────────────────────────────
