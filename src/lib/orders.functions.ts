@@ -28,22 +28,21 @@ export const placeOrder = createServerFn({ method: "POST" })
   .inputValidator((input) => OrderSchema.parse(input))
   .handler(async ({ data }) => {
     const res = await fetch(`${API_URL}/api/orders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Could not place order. Please try again.");
     return await res.json();
   });
 
 export const trackOrder = createServerFn({ method: "GET" })
-  .inputValidator((id: string) => z.string().min(24).parse(id))
+  .inputValidator((id: string) => z.string().min(24).max(24).parse(id))
   .handler(async ({ data: id }) => {
-    try {
-      const res = await fetch(`${API_URL}/api/orders/track/${id}`);
-      if (!res.ok) throw new Error("Order not found.");
-      return await res.json();
-    } catch {
-      throw new Error("Invalid Order ID or server error.");
-    }
+    const res = await fetch(`${API_URL}/api/orders/track/${id}`);
+
+    if (res.status === 404) throw new Error("Order not found.");
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+    return await res.json();
   });
