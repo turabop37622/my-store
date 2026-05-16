@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getDb } from "./db";
+
+const API_URL = "https://my-store-production-ed96.up.railway.app";
 
 const ContactSchema = z.object({
   name: z.string().min(2).max(100),
@@ -12,20 +13,11 @@ const ContactSchema = z.object({
 export const submitContactForm = createServerFn({ method: "POST" })
   .inputValidator((input) => ContactSchema.parse(input))
   .handler(async ({ data }) => {
-    const db = await getDb();
-
-    const result = await db.collection("contact_messages").insertOne({
-      name: data.name,
-      email: data.email,
-      subject: data.subject,
-      message: data.message,
-      status: "unread",
-      created_at: new Date(),
+    const res = await fetch(`${API_URL}/api/contact`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     });
-
-    if (!result.acknowledged) {
-      throw new Error("Could not submit your message. Please try again.");
-    }
-
+    if (!res.ok) throw new Error("Could not submit your message. Please try again.");
     return { success: true };
   });
