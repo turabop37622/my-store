@@ -89,14 +89,51 @@ app.get('/api/products/:slug', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
   try {
     const database = await connectDB();
-    const { customer_name, phone, city, address, items, total_amount } = req.body;
-    const result = await database.collection("orders").insertOne({
-      customer_name, phone, city, address, items,
-      total_amount: Number(total_amount),
-      status: 'pending',
-      created_at: new Date()
+    const { customer_name, phone, email, city, address, postal_code, notes, discount_code, items } = req.body;
+
+    const { ObjectId } = await import('mongodb');
+
+    // Re-price from DB
+    const objectIds = items.map(i => new ObjectId(i.product_id));
+    const dbProducts = await database.collection("products")
+      .find({ _id: { $in: objectIds }, is_active: true })
+      .toArray();
+
+    const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
+    const trustedItems = items.map(i => {
+      const p = productMap.get(i.product_id);
+      if (!p) throw new Error(`Product not available: ${i.name}`);
+      return {
+        product_id: p._id.toString(),
+        slug: p.slug,
+        name: p.name,
+        price: Number(p.price),
+        quantity: i.quantity,
+        image_url: p.image_url,
+        line_total: Number(p.price) * i.quantity,
+      };
     });
-    res.json({ success: true, id: result.insertedId.toString() });
+
+    const VALID_CODES = { "BREEZY10": 0.10, "WELCOME10": 0.10, "BREEZY20": 0.20 };
+    const subtotal = trustedItems.reduce((s, i) => s + i.line_total, 0);
+    let discount_amount = 0;
+    let verified_code = null;
+    if (discount_code) {
+      const code = discount_code.toUpperCase().trim();
+      const rate = VALID_CODES[code];
+      if (rate) { discount_amount = Math.round(subtotal * rate); verified_code = code; }
+    }
+
+    const total_amount = subtotal - discount_amount;
+    const result = await database.collection("orders").insertOne({
+      customer_name, phone, email: email || null, address, city,
+      postal_code: postal_code || null, notes: notes || null,
+      discount_code: verified_code, discount_amount,
+      items: trustedItems, subtotal, shipping_fee: 0,
+      total_amount, status: 'pending', created_at: new Date()
+    });
+
+    res.json({ success: true, id: result.insertedId.toString(), total_amount });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
