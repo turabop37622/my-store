@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getDb } from "./db";
+
+const API_URL = "https://my-store-production-ed96.up.railway.app";
 
 export type Product = {
   id: string;
@@ -20,42 +21,23 @@ export type Product = {
 
 export const listProducts = createServerFn({ method: "GET" }).handler(async () => {
   try {
-    const db = await getDb();
-    const products = await db
-      .collection("products")
-      .find({ is_active: true })
-      .sort({ sort_order: 1 })
-      .toArray();
-
-    return products.map((p) => {
-      const { _id, ...rest } = p;
-      return {
-        ...rest,
-        id: _id.toString(),
-      };
-    }) as unknown as Product[];
+    const res = await fetch(`${API_URL}/api/products`);
+    if (!res.ok) return [];
+    return await res.json() as Product[];
   } catch (err) {
-    console.error("Error in listProducts server function:", err);
-    return []; // Return empty array instead of throwing
+    console.error("Error in listProducts:", err);
+    return [];
   }
 });
-
 
 export const getProductBySlug = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ slug: z.string().min(1).max(100) }).parse(input))
   .handler(async ({ data }) => {
-    const db = await getDb();
-    const product = await db
-      .collection("products")
-      .findOne({ slug: data.slug, is_active: true });
-
-    if (!product) return null;
-
-    const { _id, ...rest } = product;
-    return {
-      ...rest,
-      id: _id.toString(),
-    } as unknown as Product;
+    try {
+      const res = await fetch(`${API_URL}/api/products/${data.slug}`);
+      if (!res.ok) return null;
+      return await res.json() as Product;
+    } catch {
+      return null;
+    }
   });
-
-
