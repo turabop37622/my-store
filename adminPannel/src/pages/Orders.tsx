@@ -1,0 +1,128 @@
+import { useState, useEffect } from "react";
+import { Trash2, Search } from "lucide-react";
+import axios from "axios";
+import { toast } from "sonner";
+
+export default function Orders() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  const fetchOrders = () => {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+    axios.get(`${backendUrl}/api/admin/orders`)
+      .then(res => { setOrders(res.data); setLoading(false); })
+      .catch(err => { console.error(err); setLoading(false); });
+  };
+
+  useEffect(() => { fetchOrders(); }, []);
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+      await axios.post(`${backendUrl}/api/admin/orders`, { id, status: newStatus });
+      toast.success("Status updated!");
+      fetchOrders();
+    } catch { toast.error("Failed to update."); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this order?")) return;
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+      await axios.delete(`${backendUrl}/api/admin/orders/${id}`);
+      toast.success("Order deleted!");
+      fetchOrders();
+    } catch { toast.error("Failed to delete."); }
+  };
+
+  const filtered = orders.filter(o => 
+    o.customer.toLowerCase().includes(search.toLowerCase()) ||
+    o.phone.includes(search) ||
+    o.city.toLowerCase().includes(search.toLowerCase()) ||
+    o.id.includes(search)
+  );
+
+  if (loading) return <div className="p-10 text-slate-500">Loading Orders...</div>;
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Orders ({orders.length})</h1>
+          <p className="text-slate-500 mt-1">Manage customer orders.</p>
+        </div>
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            placeholder="Search by name, phone, city..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
+                <th className="p-4 font-semibold">Order ID</th>
+                <th className="p-4 font-semibold">Customer</th>
+                <th className="p-4 font-semibold">Items</th>
+                <th className="p-4 font-semibold">Total</th>
+                <th className="p-4 font-semibold">Status</th>
+                <th className="p-4 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-sm">
+              {filtered.length === 0 && (
+                <tr><td colSpan={6} className="p-8 text-center text-slate-500">No orders found.</td></tr>
+              )}
+              {filtered.map((order) => (
+                <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="p-4 align-top">
+                    <div className="font-mono text-slate-500 text-xs">{order.id.slice(-8)}</div>
+                    <div className="mt-1 text-[10px] text-slate-400">{order.date}</div>
+                  </td>
+                  <td className="p-4 align-top">
+                    <div className="font-medium text-slate-900">{order.customer}</div>
+                    <div className="text-slate-500 text-xs">{order.phone}</div>
+                    <div className="text-slate-400 text-xs">{order.city}</div>
+                  </td>
+                  <td className="p-4 align-top text-slate-700 text-xs max-w-[200px] truncate">{order.items}</td>
+                  <td className="p-4 align-top font-bold text-emerald-600">Rs {(order.total || 0).toLocaleString()}</td>
+                  <td className="p-4 align-top">
+                    <select 
+                      className={`h-8 px-2 text-xs font-bold uppercase tracking-wider rounded-lg border-none focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer ${
+                        order.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
+                        order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                        order.status === 'processing' ? 'bg-amber-100 text-amber-700' :
+                        order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}
+                      value={order.status}
+                      onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </td>
+                  <td className="p-4 align-top text-right">
+                    <button onClick={() => handleDelete(order.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Delete Order">
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
