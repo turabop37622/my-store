@@ -137,6 +137,42 @@ app.post('/api/orders', async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// ─── PUBLIC ORDER TRACK ───────────────────────────
+app.get('/api/orders/:id', async (req, res) => {
+  try {
+    const database = await connectDB();
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid Order ID' });
+    }
+
+    const order = await database.collection("orders").findOne({
+      _id: new ObjectId(req.params.id)
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json({
+      id: order._id.toString(),
+      status: order.status || 'pending',
+      total_amount: order.total_amount || 0,
+      subtotal: order.subtotal || 0,
+      discount_amount: order.discount_amount || 0,
+      created_at: order.created_at,
+      customer_name: order.customer_name,
+      phone: order.phone,
+      city: order.city,
+      items: order.items || []
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── PUBLIC CONTACT ────────────────────────────────
 app.post('/api/contact', async (req, res) => {
   try {
