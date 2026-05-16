@@ -172,6 +172,36 @@ app.get('/api/orders/track/:id', async (req, res) => {   // ← sirf yeh line ba
   }
 });
 
+// ─── STATS ────────────────────────────────────────
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const [totalOrders, totalProducts, totalMessages, revenueData, todayOrders, todayRevenue] = await Promise.all([
+      database.collection("orders").countDocuments(),
+      database.collection("products").countDocuments(),
+      database.collection("contact_messages").countDocuments(),
+      database.collection("orders").aggregate([{ $group: { _id: null, total: { $sum: "$total_amount" } } }]).toArray(),
+      database.collection("orders").countDocuments({ created_at: { $gte: todayStart } }),
+      database.collection("orders").aggregate([{ $match: { created_at: { $gte: todayStart } } }, { $group: { _id: null, total: { $sum: "$total_amount" } } }]).toArray()
+    ]);
+    const recentOrders = await database.collection("orders").find().sort({ created_at: -1 }).limit(5).project({ _id: 1, customer_name: 1, total_amount: 1, status: 1, created_at: 1 }).toArray();
+    res.json({
+      totalOrders, totalProducts, totalMessages,
+      totalRevenue: revenueData[0]?.total || 0,
+      todayOrders,
+      todayRevenue: todayRevenue[0]?.total || 0,
+      recentOrders: recentOrders.map(o => ({
+        id: o._id.toString(),
+        customer: o.customer_name,
+        amount: `Rs ${(o.total_amount || 0).toLocaleString()}`,
+        status: o.status || 'pending',
+        date: new Date(o.created_at).toLocaleDateString()
+      }))
+    });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // ─── ORDERS ───────────────────────────────────────
 app.get('/api/admin/orders', async (req, res) => {
   try {
