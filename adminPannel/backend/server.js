@@ -38,13 +38,87 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
+// ─── PUBLIC PRODUCTS ──────────────────────────────
+app.get('/api/products', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { category, featured } = req.query;
+    const filter = { is_active: { $ne: false } };
+    if (category) filter.category = category;
+    if (featured === 'true') filter.is_featured = true;
+    const products = await database.collection("products").find(filter).toArray();
+    res.json(products.map(p => ({
+      id: p._id.toString(),
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      original_price: p.original_price || null,
+      category: p.category,
+      tagline: p.tagline || '',
+      image_url: p.image_url || '',
+      rating: p.rating || 4.5,
+      is_featured: p.is_featured || false,
+      stock: p.stock || 100
+    })));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC SINGLE PRODUCT ────────────────────────
+app.get('/api/products/:slug', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const product = await database.collection("products").findOne({ slug: req.params.slug });
+    if (!product) return res.status(404).json({ error: "Product not found" });
+    res.json({
+      id: product._id.toString(),
+      name: product.name,
+      slug: product.slug,
+      price: product.price,
+      original_price: product.original_price || null,
+      category: product.category,
+      tagline: product.tagline || '',
+      image_url: product.image_url || '',
+      rating: product.rating || 4.5,
+      is_featured: product.is_featured || false,
+      stock: product.stock || 100
+    });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC ORDER SUBMIT ───────────────────────────
+app.post('/api/orders', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { customer_name, phone, city, address, items, total_amount } = req.body;
+    const result = await database.collection("orders").insertOne({
+      customer_name, phone, city, address, items,
+      total_amount: Number(total_amount),
+      status: 'pending',
+      created_at: new Date()
+    });
+    res.json({ success: true, id: result.insertedId.toString() });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC CONTACT ────────────────────────────────
+app.post('/api/contact', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { name, email, subject, message } = req.body;
+    await database.collection("contact_messages").insertOne({
+      name, email, subject, message,
+      status: 'unread',
+      created_at: new Date()
+    });
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // ─── STATS ────────────────────────────────────────
 app.get('/api/admin/stats', async (req, res) => {
   try {
     const database = await connectDB();
-
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-
     const [totalOrders, totalProducts, totalMessages, revenueData, todayOrders, todayRevenue] = await Promise.all([
       database.collection("orders").countDocuments(),
       database.collection("products").countDocuments(),
@@ -58,12 +132,10 @@ app.get('/api/admin/stats', async (req, res) => {
         { $group: { _id: null, total: { $sum: "$total_amount" } } }
       ]).toArray()
     ]);
-
     const recentOrders = await database.collection("orders")
       .find().sort({ created_at: -1 }).limit(5)
       .project({ _id: 1, customer_name: 1, total_amount: 1, status: 1, created_at: 1 })
       .toArray();
-
     res.json({
       totalOrders, totalProducts, totalMessages,
       totalRevenue: revenueData[0]?.total || 0,
@@ -208,7 +280,7 @@ app.delete('/api/admin/messages/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Admin Backend running on http://localhost:${PORT}`);
   console.log(`Password: ${ADMIN_PASSWORD}`);
