@@ -297,6 +297,21 @@ app.delete('/api/admin/products/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// ─── PUBLIC CONTACT ────────────────────────────────
+app.post('/api/contact', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { name, email, subject, message } = req.body;
+    const result = await database.collection("contact_messages").insertOne({
+      name, email, subject, message,
+      status: 'unread',
+      created_at: new Date()
+    });
+    if (!result.acknowledged) throw new Error("Could not submit message.");
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // ─── MESSAGES ─────────────────────────────────────
 app.get('/api/admin/messages', async (req, res) => {
   try {
