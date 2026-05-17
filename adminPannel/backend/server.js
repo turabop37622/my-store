@@ -15,6 +15,8 @@ app.use(express.json());
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017";
 const DB_NAME = process.env.DB_NAME || "breezygo";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "breezy2026";
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "turabop37622@gmail.com";
 const client = new MongoClient(MONGODB_URI);
 
 let db;
@@ -26,6 +28,44 @@ async function connectDB() {
     console.log(`Connected to MongoDB (${DB_NAME})!`);
   }
   return db;
+}
+
+async function sendOrderEmail(order) {
+  try {
+    await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": BREVO_API_KEY
+      },
+      body: JSON.stringify({
+        sender: { name: "BreezyGo Store", email: "turabop37622@gmail.com" },
+        to: [{ email: ADMIN_EMAIL }],
+        subject: `🛒 New Order - Rs ${order.total_amount.toLocaleString()} - ${order.customer_name}`,
+        htmlContent: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #10b981;">New Order Received! 🎉</h2>
+            <p><strong>Order ID:</strong> ${order.id}</p>
+            <p><strong>Customer:</strong> ${order.customer_name}</p>
+            <p><strong>Phone:</strong> ${order.phone}</p>
+            <p><strong>City:</strong> ${order.city}</p>
+            <p><strong>Address:</strong> ${order.address}</p>
+            <hr/>
+            <h3>Items:</h3>
+            <ul>
+              ${order.items.map(i => `<li>${i.quantity}x ${i.name} - Rs ${i.line_total.toLocaleString()}</li>`).join('')}
+            </ul>
+            <hr/>
+            <p><strong>Total: Rs ${order.total_amount.toLocaleString()}</strong></p>
+            <p style="color: #6b7280;">Order placed at: ${new Date().toLocaleString('en-PK')}</p>
+          </div>
+        `
+      })
+    });
+    console.log("Order email sent!");
+  } catch (err) {
+    console.error("Email send error:", err);
+  }
 }
 
 // ─── AUTH ──────────────────────────────────────────
@@ -93,7 +133,6 @@ app.post('/api/orders', async (req, res) => {
 
     const { ObjectId } = await import('mongodb');
 
-    // Re-price from DB
     const objectIds = items.map(i => new ObjectId(i.product_id));
     const dbProducts = await database.collection("products")
       .find({ _id: { $in: objectIds }, is_active: true })
@@ -133,27 +172,26 @@ app.post('/api/orders', async (req, res) => {
       total_amount, status: 'pending', created_at: new Date()
     });
 
+    await sendOrderEmail({
+      id: result.insertedId.toString(),
+      customer_name, phone, city, address,
+      items: trustedItems,
+      total_amount
+    });
+
     res.json({ success: true, id: result.insertedId.toString(), total_amount });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 // ─── PUBLIC ORDER TRACK ───────────────────────────
-app.get('/api/orders/track/:id', async (req, res) => {   // ← sirf yeh line badlo
+app.get('/api/orders/track/:id', async (req, res) => {
   try {
     const database = await connectDB();
-
     if (!ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid Order ID' });
     }
-
-    const order = await database.collection("orders").findOne({
-      _id: new ObjectId(req.params.id)
-    });
-
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
+    const order = await database.collection("orders").findOne({ _id: new ObjectId(req.params.id) });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
     res.json({
       id: order._id.toString(),
       status: order.status || 'pending',
@@ -166,10 +204,7 @@ app.get('/api/orders/track/:id', async (req, res) => {   // ← sirf yeh line ba
       city: order.city,
       items: order.items || []
     });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 // ─── STATS ────────────────────────────────────────
