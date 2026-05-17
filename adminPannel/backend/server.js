@@ -42,24 +42,92 @@ async function sendOrderEmail(order) {
         sender: { name: "BreezyGo Store", email: "turabop37622@gmail.com" },
         to: [{ email: ADMIN_EMAIL }],
         subject: `🛒 New Order - Rs ${order.total_amount.toLocaleString()} - ${order.customer_name}`,
-        htmlContent: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #10b981;">New Order Received! 🎉</h2>
-            <p><strong>Order ID:</strong> ${order.id}</p>
-            <p><strong>Customer:</strong> ${order.customer_name}</p>
-            <p><strong>Phone:</strong> ${order.phone}</p>
-            <p><strong>City:</strong> ${order.city}</p>
-            <p><strong>Address:</strong> ${order.address}</p>
-            <hr/>
-            <h3>Items:</h3>
-            <ul>
-              ${order.items.map(i => `<li>${i.quantity}x ${i.name} - Rs ${i.line_total.toLocaleString()}</li>`).join('')}
-            </ul>
-            <hr/>
-            <p><strong>Total: Rs ${order.total_amount.toLocaleString()}</strong></p>
-            <p style="color: #6b7280;">Order placed at: ${new Date().toLocaleString('en-PK')}</p>
-          </div>
-        `
+        htmlContent: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#10b981,#059669);padding:40px 40px 30px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;letter-spacing:-0.5px;">🛒 BreezyGo</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Premium Lifestyle Tech</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#ecfdf5;padding:20px 40px;border-bottom:2px solid #d1fae5;">
+            <p style="margin:0;color:#065f46;font-size:16px;font-weight:700;text-align:center;">🎉 New Order Received!</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:12px;padding:20px;margin-bottom:24px;">
+              <tr>
+                <td>
+                  <p style="margin:0 0 4px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Order ID</p>
+                  <p style="margin:0;color:#111827;font-size:16px;font-weight:700;font-family:monospace;">#${order.id.slice(-8).toUpperCase()}</p>
+                </td>
+                <td align="right">
+                  <span style="background:#10b981;color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase;">PENDING</span>
+                </td>
+              </tr>
+            </table>
+            <h3 style="margin:0 0 16px;color:#111827;font-size:16px;font-weight:700;border-bottom:2px solid #f3f4f6;padding-bottom:12px;">👤 Customer Details</h3>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr>
+                <td width="50%" style="padding:8px 0;">
+                  <p style="margin:0;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Name</p>
+                  <p style="margin:4px 0 0;color:#111827;font-size:15px;font-weight:600;">${order.customer_name}</p>
+                </td>
+                <td width="50%" style="padding:8px 0;">
+                  <p style="margin:0;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Phone</p>
+                  <p style="margin:4px 0 0;color:#111827;font-size:15px;font-weight:600;">${order.phone}</p>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:8px 0;">
+                  <p style="margin:0;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Delivery Address</p>
+                  <p style="margin:4px 0 0;color:#111827;font-size:15px;font-weight:600;">${order.address}, ${order.city}</p>
+                </td>
+              </tr>
+            </table>
+            <h3 style="margin:0 0 16px;color:#111827;font-size:16px;font-weight:700;border-bottom:2px solid #f3f4f6;padding-bottom:12px;">📦 Order Items</h3>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              ${order.items.map(i => `
+              <tr>
+                <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
+                  <p style="margin:0;color:#111827;font-size:15px;font-weight:600;">${i.name}</p>
+                  <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Qty: ${i.quantity} × Rs ${i.price.toLocaleString()}</p>
+                </td>
+                <td align="right" style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
+                  <p style="margin:0;color:#10b981;font-size:15px;font-weight:700;">Rs ${i.line_total.toLocaleString()}</p>
+                </td>
+              </tr>`).join('')}
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#10b981,#059669);border-radius:12px;padding:20px;">
+              <tr>
+                <td>
+                  <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;">Total Amount (COD)</p>
+                </td>
+                <td align="right">
+                  <p style="margin:0;color:#ffffff;font-size:24px;font-weight:800;">Rs ${order.total_amount.toLocaleString()}</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
+            <p style="margin:0;color:#6b7280;font-size:13px;">This is an automated notification from <strong>BreezyGo Store</strong></p>
+            <p style="margin:8px 0 0;color:#9ca3af;font-size:12px;">${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
       })
     });
     console.log("Order email sent!");
