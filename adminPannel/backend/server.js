@@ -131,13 +131,85 @@ async function sendOrderEmail(order) {
       })
     });
 
-    // ✅ YEH NAYI LINES ADD KI HAIN
     const data = await response.json();
     console.log("Brevo status:", response.status);
     console.log("Brevo response:", JSON.stringify(data));
 
   } catch (err) {
     console.error("Email send error:", err);
+  }
+}
+
+// ─── REVIEW EMAIL ─────────────────────────────────
+async function sendReviewEmail(order) {
+  if (!order.email) return; // email nahi hai toh skip
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": BREVO_API_KEY
+      },
+      body: JSON.stringify({
+        sender: { name: "BreezyGo Store", email: "turabop37622@gmail.com" },
+        to: [{ email: order.email }],
+        subject: `⭐ How was your order, ${order.customer_name}?`,
+        htmlContent: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#10b981,#059669);padding:40px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">🛒 BreezyGo</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Premium Lifestyle Tech</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px;text-align:center;">
+            <div style="font-size:56px;margin-bottom:16px;">⭐</div>
+            <h2 style="margin:0 0 12px;color:#111827;font-size:22px;font-weight:800;">Your order has been delivered!</h2>
+            <p style="margin:0 0 8px;color:#6b7280;font-size:15px;">Hi <strong>${order.customer_name}</strong>, we hope you love your purchase!</p>
+            <p style="margin:0 0 32px;color:#6b7280;font-size:14px;">We'd love to hear your feedback — it helps us improve.</p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:12px;padding:20px;margin-bottom:32px;text-align:left;">
+              <tr>
+                <td>
+                  <p style="margin:0 0 10px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Items Ordered</p>
+                  ${order.items.map(i => `
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+                    <tr>
+                      <td>
+                        <p style="margin:0;color:#111827;font-size:14px;font-weight:600;">• ${i.name}</p>
+                        <p style="margin:2px 0 0;color:#6b7280;font-size:12px;">Qty: ${i.quantity}</p>
+                      </td>
+                    </tr>
+                  </table>`).join('')}
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 8px;color:#374151;font-size:14px;">How would you rate your experience with BreezyGo?</p>
+            <div style="font-size:36px;letter-spacing:4px;margin-bottom:32px;">😍 😊 😐 😕 😞</div>
+
+            <p style="margin:32px 0 0;color:#9ca3af;font-size:12px;">Thank you for shopping with <strong>BreezyGo</strong> 💚</p>
+            <p style="margin:4px 0 0;color:#9ca3af;font-size:11px;">${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+      })
+    });
+
+    const data = await response.json();
+    console.log("Review email status:", response.status, JSON.stringify(data));
+  } catch (err) {
+    console.error("Review email error:", err);
   }
 }
 
@@ -340,6 +412,19 @@ app.post('/api/admin/orders', async (req, res) => {
       { _id: new ObjectId(id) },
       { $set: { status, updated_at: new Date() } }
     );
+
+    // ✅ Delivered hone par customer ko review mail bhejo
+    if (status === 'delivered') {
+      const order = await database.collection("orders").findOne({ _id: new ObjectId(id) });
+      if (order && order.email) {
+        await sendReviewEmail({
+          email: order.email,
+          customer_name: order.customer_name,
+          items: order.items
+        });
+      }
+    }
+
     res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
