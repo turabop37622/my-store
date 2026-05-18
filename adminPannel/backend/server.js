@@ -32,7 +32,7 @@ async function connectDB() {
 
 async function sendOrderEmail(order) {
   try {
-    await fetch("https://api.brevo.com/v3/smtp/email", {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -130,7 +130,12 @@ async function sendOrderEmail(order) {
 </html>`
       })
     });
-    console.log("Order email sent!");
+
+    // ✅ YEH NAYI LINES ADD KI HAIN
+    const data = await response.json();
+    console.log("Brevo status:", response.status);
+    console.log("Brevo response:", JSON.stringify(data));
+
   } catch (err) {
     console.error("Email send error:", err);
   }
@@ -314,8 +319,11 @@ app.get('/api/admin/orders', async (req, res) => {
       id: o._id.toString(),
       customer: o.customer_name,
       phone: o.phone,
+      email: o.email || null,
       city: o.city,
       address: o.address,
+      postalCode: o.postal_code || null,
+      trackingId: o.tracking_id || null,
       items: o.items.map(i => `${i.quantity}x ${i.name}`).join(', '),
       total: o.total_amount,
       status: o.status || 'pending',
@@ -332,6 +340,15 @@ app.post('/api/admin/orders', async (req, res) => {
       { _id: new ObjectId(id) },
       { $set: { status, updated_at: new Date() } }
     );
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Delete ALL orders
+app.delete('/api/admin/orders', async (req, res) => {
+  try {
+    const database = await connectDB();
+    await database.collection("orders").deleteMany({});
     res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
