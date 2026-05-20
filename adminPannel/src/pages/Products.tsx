@@ -48,7 +48,7 @@ export default function Products() {
       if (editingId) {
         await axios.put(`${backendUrl}/api/admin/products/${editingId}`, {
           name: form.name, price: form.price, original_price: form.original_price || null,
-          category: form.category, tagline: form.tagline, stock: form.stock, is_active: true
+          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.image_url, is_active: true
         });
         toast.success("Product updated!");
       } else {
@@ -188,13 +188,11 @@ export default function Products() {
                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Premium wireless earbuds with ANC" />
               </div>
 
-              {!editingId && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Image URL</label>
-                  <input value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})}
-                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="/assets/products/image.webp" />
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Image URL</label>
+                <input value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})}
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="/assets/products/image.webp" />
+              </div>
 
               <button type="submit" disabled={saving}
                 className="w-full h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50">

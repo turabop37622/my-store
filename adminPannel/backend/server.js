@@ -19,15 +19,18 @@ const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "turabop37622@gmail.com";
 const client = new MongoClient(MONGODB_URI);
 
-let db;
+let dbPromise = null;
 
 async function connectDB() {
-  if (!db) {
-    await client.connect();
-    db = client.db(DB_NAME);
-    console.log(`Connected to MongoDB (${DB_NAME})!`);
+  if (!dbPromise) {
+    dbPromise = (async () => {
+      await client.connect();
+      const database = client.db(DB_NAME);
+      console.log(`Connected to MongoDB (${DB_NAME})!`);
+      return database;
+    })();
   }
-  return db;
+  return dbPromise;
 }
 
 async function sendOrderEmail(order) {
@@ -276,7 +279,15 @@ app.post('/api/orders', async (req, res) => {
     const database = await connectDB();
     const { customer_name, phone, email, city, address, postal_code, notes, discount_code, items } = req.body;
 
-    const { ObjectId } = await import('mongodb');
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ error: "Items must be an array" });
+    }
+
+    for (const item of items) {
+      if (!item.product_id || !ObjectId.isValid(item.product_id)) {
+        return res.status(400).json({ error: `Invalid product ID format: ${item.product_id || 'undefined'}` });
+      }
+    }
 
     const objectIds = items.map(i => new ObjectId(i.product_id));
     const dbProducts = await database.collection("products")
@@ -406,8 +417,11 @@ app.get('/api/admin/orders', async (req, res) => {
 
 app.post('/api/admin/orders', async (req, res) => {
   try {
-    const database = await connectDB();
     const { id, status } = req.body;
+    if (!id || !ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid order ID" });
+    }
+    const database = await connectDB();
     await database.collection("orders").updateOne(
       { _id: new ObjectId(id) },
       { $set: { status, updated_at: new Date() } }
@@ -440,6 +454,9 @@ app.delete('/api/admin/orders', async (req, res) => {
 
 app.delete('/api/admin/orders/:id', async (req, res) => {
   try {
+    if (!ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: "Invalid order ID" });
+    }
     const database = await connectDB();
     await database.collection("orders").deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ success: true });
@@ -484,11 +501,29 @@ app.post('/api/admin/products', async (req, res) => {
 
 app.put('/api/admin/products/:id', async (req, res) => {
   try {
+    if (!ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: "Invalid product ID" });
+    }
     const database = await connectDB();
-    const { name, price, original_price, category, tagline, stock, is_active } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active } = req.body;
+    
+    const updateDoc = {
+      name,
+      price: Number(price),
+      original_price: original_price ? Number(original_price) : null,
+      category,
+      tagline: tagline || '',
+      stock: Number(stock) || 0,
+      is_active: is_active !== false,
+      updated_at: new Date()
+    };
+    
+    if (slug) updateDoc.slug = slug;
+    if (image_url) updateDoc.image_url = image_url;
+
     await database.collection("products").updateOne(
       { _id: new ObjectId(req.params.id) },
-      { $set: { name, price: Number(price), original_price: original_price ? Number(original_price) : null, category, tagline, stock: Number(stock), is_active, updated_at: new Date() } }
+      { $set: updateDoc }
     );
     res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -496,6 +531,9 @@ app.put('/api/admin/products/:id', async (req, res) => {
 
 app.delete('/api/admin/products/:id', async (req, res) => {
   try {
+    if (!ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: "Invalid product ID" });
+    }
     const database = await connectDB();
     await database.collection("products").deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ success: true });
@@ -533,8 +571,11 @@ app.get('/api/admin/messages', async (req, res) => {
 
 app.post('/api/admin/messages', async (req, res) => {
   try {
-    const database = await connectDB();
     const { id } = req.body;
+    if (!id || !ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid message ID" });
+    }
+    const database = await connectDB();
     await database.collection("contact_messages").updateOne(
       { _id: new ObjectId(id) }, { $set: { status: 'read', updated_at: new Date() } }
     );
@@ -544,6 +585,9 @@ app.post('/api/admin/messages', async (req, res) => {
 
 app.delete('/api/admin/messages/:id', async (req, res) => {
   try {
+    if (!ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: "Invalid message ID" });
+    }
     const database = await connectDB();
     await database.collection("contact_messages").deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ success: true });

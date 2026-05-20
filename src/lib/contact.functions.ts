@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-
-const API_URL = "https://my-store-production-16a5.up.railway.app";
+import { API_URL } from "./db";
 
 const ContactSchema = z.object({
   name: z.string().min(2).max(100),

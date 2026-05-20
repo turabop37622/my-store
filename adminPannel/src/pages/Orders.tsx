@@ -48,10 +48,10 @@ export default function Orders() {
   };
 
   const filtered = orders.filter(o =>
-    o.customer.toLowerCase().includes(search.toLowerCase()) ||
-    o.phone.includes(search) ||
-    o.city.toLowerCase().includes(search.toLowerCase()) ||
-    o.id.includes(search)
+    o.customer?.toLowerCase().includes(search.toLowerCase()) ||
+    o.phone?.includes(search) ||
+    o.city?.toLowerCase().includes(search.toLowerCase()) ||
+    o.id?.includes(search)
   );
 
   if (loading) return <div className="p-10 text-slate-500">Loading Orders...</div>;
