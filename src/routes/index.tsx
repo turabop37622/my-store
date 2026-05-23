@@ -12,6 +12,7 @@ import { ArrowRight, Headphones, Watch, Speaker, Cable } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
+  ssr: false,
   head: () => ({
     meta: [
       { title: "BreezyGo — Earbuds, Watches & Lifestyle Tech | COD Pakistan" },
@@ -43,7 +44,7 @@ function Index() {
     enabled: typeof window !== "undefined",
   });
 
-  const featured = (products ?? []).filter((p) => p?.is_featured);
+  const featured = (products ?? []).filter((p: Product) => p?.is_featured);
   const trending = (products ?? []).slice(0, 8);
   const banners: Product[] = (featured.length ? featured : trending).slice(0, 4);
 
@@ -95,7 +96,7 @@ function Index() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-            {(featured.length ? featured : trending).map((p) => (
+            {(featured.length ? featured : trending).map((p: Product) => (
               p && <ProductCard key={p?.id} product={p} />
             ))}
           </div>

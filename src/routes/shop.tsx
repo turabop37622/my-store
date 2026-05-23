@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
+import type { Product } from "@/lib/products.functions";
 import { ProductCard } from "@/components/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ const API_URL = "https://breezygo-admin-backend.turabop37622.workers.dev";
 export const Route = createFileRoute("/shop")({
   validateSearch: (s) => SearchSchema.parse(s),
   component: Shop,
+  ssr: false,
   head: () => ({
     meta: [{ title: "Shop All — BreezyGo" }],
   }),
@@ -40,7 +42,7 @@ function Shop() {
 
   const filtered =
     category && category !== "All"
-      ? (products ?? []).filter((p) => p.category === category)
+      ? (products ?? []).filter((p: Product) => p.category === category)
       : products ?? [];
 
   const safePage = isNaN(Number(page)) ? 1 : Number(page);
@@ -99,7 +101,7 @@ function Shop() {
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-12">
-              {paginatedItems.map((p) => (
+              {paginatedItems.map((p: Product) => (
                 p && <ProductCard key={p?.id} product={p} />
               ))}
             </div>
