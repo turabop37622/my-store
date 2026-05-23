@@ -1,6 +1,6 @@
 import { MongoClient } from "mongodb";
 
-export const API_URL = "https://my-store-production-16a5.up.railway.app";
+export const API_URL = "https://breezygo-admin-backend.turabop37622.workers.dev";
 
 export async function fetchFromApi(path: string, options?: RequestInit) {
   const res = await fetch(`${API_URL}${path}`, options);

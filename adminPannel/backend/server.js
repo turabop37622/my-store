@@ -5,8 +5,10 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: resolve(__dirname, '../../.env') });
+if (typeof process !== 'undefined' && process.release?.name === 'node') {
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  dotenv.config({ path: resolve(__dirname, '../../.env') });
+}
 
 const app = express();
 app.use(cors());
@@ -595,7 +597,13 @@ app.delete('/api/admin/messages/:id', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Admin Backend running on http://localhost:${PORT}`);
-  console.log(`Password: ${ADMIN_PASSWORD}`);
-});
+const isMain = typeof process !== 'undefined' && process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+
+if (isMain) {
+  app.listen(PORT, () => {
+    console.log(`Admin Backend running on http://localhost:${PORT}`);
+    console.log(`Password: ${ADMIN_PASSWORD}`);
+  });
+}
+
+export default app;
