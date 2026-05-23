@@ -1,5 +1,3 @@
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 import { API_URL } from "./db";
 
 export type Product = {
@@ -18,7 +16,7 @@ export type Product = {
   is_featured: boolean;
 };
 
-export const listProducts = createServerFn({ method: "GET" }).handler(async () => {
+export async function listProducts(): Promise<Product[]> {
   try {
     const res = await fetch(`${API_URL}/api/products`);
     if (!res.ok) return [];
@@ -27,16 +25,14 @@ export const listProducts = createServerFn({ method: "GET" }).handler(async () =
     console.error("Error in listProducts:", err);
     return [];
   }
-});
+}
 
-export const getProductBySlug = createServerFn({ method: "GET" })
-  .inputValidator((input) => z.object({ slug: z.string().min(1).max(100) }).parse(input))
-  .handler(async ({ data }) => {
-    try {
-      const res = await fetch(`${API_URL}/api/products/${data.slug}`);
-      if (!res.ok) return null;
-      return await res.json() as Product;
-    } catch {
-      return null;
-    }
-  });
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/products/${slug}`);
+    if (!res.ok) return null;
+    return await res.json() as Product;
+  } catch {
+    return null;
+  }
+}

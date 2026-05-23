@@ -29,10 +29,14 @@ function Shop() {
   const category = search.category;
   const page = search.page;
 
-  const fetchProducts = useServerFn(listProducts);
+  const API_URL = "https://breezygo-admin-backend.turabop37622.workers.dev";
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
-    queryFn: () => fetchProducts(),
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/products`);
+      if (!res.ok) return [];
+      return res.json();
+    },
   });
 
   const filtered =
