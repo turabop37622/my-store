@@ -17,6 +17,7 @@ export type Product = {
 };
 
 export async function listProducts(): Promise<Product[]> {
+  if (typeof window === "undefined") return [];
   try {
     const res = await fetch(`${API_URL}/api/products`);
     if (!res.ok) return [];
@@ -28,6 +29,7 @@ export async function listProducts(): Promise<Product[]> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
+  if (typeof window === "undefined") return null;
   try {
     const res = await fetch(`${API_URL}/api/products/${slug}`);
     if (!res.ok) return null;
