@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import hero2 from "@/assets/hero 2.png";
 import hero3 from "@/assets/hero 3.png";
 import { useHeaderTheme } from "@/lib/header-theme";
-import { listProducts, type Product } from "@/lib/products.functions";
+import type { Product } from "@/lib/products.functions";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,7 +35,12 @@ const CATEGORIES = [
 function Index() {
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
-    queryFn: () => listProducts(),
+    queryFn: async () => {
+      const res = await fetch("https://breezygo-admin-backend.turabop37622.workers.dev/api/products");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: typeof window !== "undefined",
   });
 
   const featured = (products ?? []).filter((p) => p?.is_featured);
