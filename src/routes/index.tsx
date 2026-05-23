@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import hero2 from "@/assets/hero 2.png";
 import hero3 from "@/assets/hero 3.png";
@@ -9,6 +8,8 @@ import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, Headphones, Watch, Speaker, Cable } from "lucide-react";
+
+const API_URL = "https://breezygo-admin-backend.turabop37622.workers.dev";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -34,18 +35,20 @@ const CATEGORIES = [
 ];
 
 function Index() {
-  const { data: products, isLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: async () => {
-      const res = await fetch("https://breezygo-admin-backend.turabop37622.workers.dev/api/products");
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: typeof window !== "undefined",
-  });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const featured = (products ?? []).filter((p: Product) => p?.is_featured);
-  const trending = (products ?? []).slice(0, 8);
+  useEffect(() => {
+    setIsLoading(true);
+    fetch(`${API_URL}/api/products`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setProducts(data ?? []))
+      .catch(() => setProducts([]))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const featured = products.filter((p: Product) => p?.is_featured);
+  const trending = products.slice(0, 8);
   const banners: Product[] = (featured.length ? featured : trending).slice(0, 4);
 
   return (
