@@ -14,21 +14,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017";
-const DB_NAME = process.env.DB_NAME || "breezygo";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "breezy2026";
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "turabop37622@gmail.com";
-const client = new MongoClient(MONGODB_URI);
-
+let client = null;
 let dbPromise = null;
 
 async function connectDB() {
   if (!dbPromise) {
     dbPromise = (async () => {
+      const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+      const dbName = process.env.MONGODB_DB || process.env.DB_NAME || "breezygo";
+      client = new MongoClient(uri);
       await client.connect();
-      const database = client.db(DB_NAME);
-      console.log(`Connected to MongoDB (${DB_NAME})!`);
+      const database = client.db(dbName);
+      console.log(`Connected to MongoDB (${dbName})!`);
       return database;
     })();
   }
@@ -41,11 +38,11 @@ async function sendOrderEmail(order) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": BREVO_API_KEY
+        "api-key": process.env.BREVO_API_KEY
       },
       body: JSON.stringify({
         sender: { name: "BreezyGo Store", email: "turabop37622@gmail.com" },
-        to: [{ email: ADMIN_EMAIL }],
+        to: [{ email: process.env.ADMIN_EMAIL || "turabop37622@gmail.com" }],
         subject: `🛒 New Order - Rs ${order.total_amount.toLocaleString()} - ${order.customer_name}`,
         htmlContent: `<!DOCTYPE html>
 <html>
@@ -153,7 +150,7 @@ async function sendReviewEmail(order) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": BREVO_API_KEY
+        "api-key": process.env.BREVO_API_KEY
       },
       body: JSON.stringify({
         sender: { name: "BreezyGo Store", email: "turabop37622@gmail.com" },
@@ -221,7 +218,8 @@ async function sendReviewEmail(order) {
 // ─── AUTH ──────────────────────────────────────────
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
-  if (password === ADMIN_PASSWORD) {
+  const adminPass = process.env.ADMIN_PASSWORD || "breezy2026";
+  if (password === adminPass) {
     res.json({ success: true, token: "admin-session-" + Date.now() });
   } else {
     res.status(401).json({ error: "Invalid password" });
