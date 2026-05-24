@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import type { Product } from "@/lib/products.functions";
 import { ProductCard } from "@/components/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ const API_URL = "https://breezygo-admin-backend.turabop37622.workers.dev";
 export const Route = createFileRoute("/shop")({
   validateSearch: (s) => SearchSchema.parse(s),
   component: Shop,
-  ssr: false,
   head: () => ({
     meta: [{ title: "Shop All — BreezyGo" }],
   }),
@@ -30,28 +28,26 @@ function Shop() {
   const category = search.category;
   const page = search.page;
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    setIsLoading(true);
-    fetch(`${API_URL}/api/products`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setProducts(data ?? []))
-      .catch(() => setProducts([]))
-      .finally(() => setIsLoading(false));
-  }, []);
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/products`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: typeof window !== "undefined",
+  });
 
   const filtered =
     category && category !== "All"
-      ? products.filter((p: Product) => p.category === category)
-      : products;
+      ? (products ?? []).filter((p: any) => p.category === category)
+      : products ?? [];
 
   const safePage = isNaN(Number(page)) ? 1 : Number(page);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil((filtered?.length ?? 0) / ITEMS_PER_PAGE));
   const currentPage = Math.max(1, Math.min(safePage, totalPages));
 
-  const paginatedItems = filtered.slice(
+  const paginatedItems = (filtered ?? []).slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -87,13 +83,13 @@ function Shop() {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-12 mt-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-12">
             {Array.from({ length: 10 }).map((_, i) => (
               <Skeleton key={i} className="aspect-square rounded-2xl" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-24 bg-white/5 rounded-[2rem] border border-white/5 mt-8">
+          <div className="text-center py-24 bg-white/5 rounded-[2rem] border border-white/5">
             <h3 className="text-lg font-bold uppercase">No products found</h3>
             <p className="text-white/40 mt-2">Try adjusting your filters or category selection.</p>
             <Button asChild variant="outline" className="rounded-full px-8 mt-4">
@@ -102,9 +98,9 @@ function Shop() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-12 mt-8">
-              {paginatedItems.map((p: Product) => (
-                p && <ProductCard key={p.id} product={p} />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-12">
+              {paginatedItems.map((p: any) => (
+                p && <ProductCard key={p?.id} product={p} />
               ))}
             </div>
 

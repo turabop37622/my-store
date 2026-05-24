@@ -1,19 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import hero2 from "@/assets/hero 2.png";
 import hero3 from "@/assets/hero 3.png";
 import { useHeaderTheme } from "@/lib/header-theme";
-import type { Product } from "@/lib/products.functions";
+import { listProducts, type Product } from "@/lib/products.functions";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, Headphones, Watch, Speaker, Cable } from "lucide-react";
 
-const API_URL = "https://breezygo-admin-backend.turabop37622.workers.dev";
-
 export const Route = createFileRoute("/")({
   component: Index,
-  ssr: false,
   head: () => ({
     meta: [
       { title: "BreezyGo — Earbuds, Watches & Lifestyle Tech | COD Pakistan" },
@@ -35,20 +33,14 @@ const CATEGORIES = [
 ];
 
 function Index() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => listProducts(),
+    enabled: typeof window !== "undefined",
+  });
 
-  useEffect(() => {
-    setIsLoading(true);
-    fetch(`${API_URL}/api/products`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setProducts(data ?? []))
-      .catch(() => setProducts([]))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  const featured = products.filter((p: Product) => p?.is_featured);
-  const trending = products.slice(0, 8);
+  const featured = (products ?? []).filter((p) => p?.is_featured);
+  const trending = (products ?? []).slice(0, 8);
   const banners: Product[] = (featured.length ? featured : trending).slice(0, 4);
 
   return (
@@ -99,7 +91,7 @@ function Index() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-            {(featured.length ? featured : trending).map((p: Product) => (
+            {(featured.length ? featured : trending).map((p) => (
               p && <ProductCard key={p?.id} product={p} />
             ))}
           </div>

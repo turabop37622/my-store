@@ -1,5 +1,4 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { placeOrder } from "@/lib/orders.functions";
 import { useCart } from "@/lib/cart-store";
@@ -14,20 +13,20 @@ import { Trash2, Banknote, Minus, Plus, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const PAKISTAN_CITIES = [
-  "Abbottabad", "Ahmadpur East", "Arif Wala", "Attock", "Badin", "Bahawalnagar", 
-  "Bahawalpur", "Bhakkar", "Bhalwal", "Burewala", "Chakwal", "Chaman", "Charsadda", 
-  "Chiniot", "Chishtian", "Dadu", "Daska", "Dera Ghazi Khan", "Dera Ismail Khan", 
-  "Faisalabad", "Ferozwala", "Ghotki", "Gojra", "Gujranwala", "Gujranwala Cantonment", 
-  "Gujrat", "Hafizabad", "Haroonabad", "Hasilpur", "Hub", "Hyderabad", "Islamabad", 
-  "Jacobabad", "Jaranwala", "Jatoi", "Jhang", "Jhelum", "Kabal", "Kamalia", "Kamber Ali Khan", 
-  "Kāmoke", "Kandhkot", "Karachi", "Kasur", "Khairpur", "Khanewal", "Khanpur", "Khushab", 
-  "Khuzdar", "Kohat", "Kot Abdul Malik", "Kot Addu", "Kotri", "Lahore", "Larkana", 
-  "Layyah", "Lodhran", "Mandi Bahauddin", "Mansehra", "Mardan", "Mianwali", "Mingora", 
-  "Mirpur", "Mirpur Khas", "Mirpur Mathelo", "Multan", "Muridke", "Muzaffarabad", 
-  "Muzaffargarh", "Narowal", "Nawabshah", "Nowshera", "Okara", "Pakpattan", "Peshawar", 
-  "Quetta", "Rahim Yar Khan", "Rawalpindi", "Sadiqabad", "Sahiwal", "Sambrial", "Samundri", 
-  "Sargodha", "Shahdadkot", "Sheikhupura", "Shikarpur", "Shorkot", "Sialkot", "Sukkur", 
-  "Swabi", "Tando Adam", "Tando Allahyar", "Tando Muhammad Khan", "Taxila", "Turbat", 
+  "Abbottabad", "Ahmadpur East", "Arif Wala", "Attock", "Badin", "Bahawalnagar",
+  "Bahawalpur", "Bhakkar", "Bhalwal", "Burewala", "Chakwal", "Chaman", "Charsadda",
+  "Chiniot", "Chishtian", "Dadu", "Daska", "Dera Ghazi Khan", "Dera Ismail Khan",
+  "Faisalabad", "Ferozwala", "Ghotki", "Gojra", "Gujranwala", "Gujranwala Cantonment",
+  "Gujrat", "Hafizabad", "Haroonabad", "Hasilpur", "Hub", "Hyderabad", "Islamabad",
+  "Jacobabad", "Jaranwala", "Jatoi", "Jhang", "Jhelum", "Kabal", "Kamalia", "Kamber Ali Khan",
+  "Kāmoke", "Kandhkot", "Karachi", "Kasur", "Khairpur", "Khanewal", "Khanpur", "Khushab",
+  "Khuzdar", "Kohat", "Kot Abdul Malik", "Kot Addu", "Kotri", "Lahore", "Larkana",
+  "Layyah", "Lodhran", "Mandi Bahauddin", "Mansehra", "Mardan", "Mianwali", "Mingora",
+  "Mirpur", "Mirpur Khas", "Mirpur Mathelo", "Multan", "Muridke", "Muzaffarabad",
+  "Muzaffargarh", "Narowal", "Nawabshah", "Nowshera", "Okara", "Pakpattan", "Peshawar",
+  "Quetta", "Rahim Yar Khan", "Rawalpindi", "Sadiqabad", "Sahiwal", "Sambrial", "Samundri",
+  "Sargodha", "Shahdadkot", "Sheikhupura", "Shikarpur", "Shorkot", "Sialkot", "Sukkur",
+  "Swabi", "Tando Adam", "Tando Allahyar", "Tando Muhammad Khan", "Taxila", "Turbat",
   "Umerkot", "Vehari", "Wah Cantonment", "Wazirabad"
 ];
 
@@ -42,12 +41,11 @@ function Checkout() {
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
   const clear = useCart((s) => s.clear);
-  const placeOrderFn = useServerFn(placeOrder);
 
   const baseSubtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const [discountCode, setDiscountCode] = useState("");
   const [discountApplied, setDiscountApplied] = useState(false);
-  
+
   const discountAmount = discountApplied ? Math.round(baseSubtotal * 0.1) : 0;
   const subtotal = baseSubtotal - discountAmount;
 
@@ -82,25 +80,23 @@ function Checkout() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const res = await placeOrderFn({
-        data: {
-          customer_name: form.customer_name.trim(),
-          phone: form.phone.trim(),
-          email: form.email.trim() || null,
-          address: form.address.trim(),
-          city: form.city.trim(),
-          postal_code: form.postal_code.trim() || null,
-          notes: form.notes.trim() || null,
-          discount_code: discountApplied ? discountCode.trim() : null,
-          items: items.map((i) => ({
-            product_id: i.product_id,
-            slug: i.slug,
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity,
-            image_url: i.image_url,
-          })),
-        },
+      const res = await placeOrder({
+        customer_name: form.customer_name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim() || null,
+        address: form.address.trim(),
+        city: form.city.trim(),
+        postal_code: form.postal_code.trim() || null,
+        notes: form.notes.trim() || null,
+        discount_code: discountApplied ? discountCode.trim() : null,
+        items: items.map((i) => ({
+          product_id: i.product_id,
+          slug: i.slug,
+          name: i.name,
+          price: i.price,
+          quantity: i.quantity,
+          image_url: i.image_url,
+        })),
       });
       toast.success("Order successful!");
       clear();
@@ -123,35 +119,34 @@ function Checkout() {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Checkout</h1>
           <p className="text-slate-500 text-sm mt-1">Enter your details — payment on delivery.</p>
         </div>
-        
+
         <form onSubmit={onSubmit} className="grid lg:grid-cols-12 gap-10 items-start">
-          {/* Left: Form Fields */}
           <div className="lg:col-span-7 space-y-6">
             <div className="grid sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700">Full Name</Label>
-                <Input required className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.customer_name} onChange={e => setForm({...form, customer_name: e.target.value})} placeholder="Enter your name" />
+                <Input required className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.customer_name} onChange={e => setForm({ ...form, customer_name: e.target.value })} placeholder="Enter your name" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700">Phone Number</Label>
-                <Input required className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="Enter your phone number" />
+                <Input required className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Enter your phone number" />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700">Email (optional)</Label>
-              <Input type="email" className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="Enter your email" />
+              <Input type="email" className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Enter your email" />
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700">Complete Address</Label>
-              <Textarea required className="min-h-[100px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="House #, Street, Area" />
+              <Textarea required className="min-h-[100px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="House #, Street, Area" />
             </div>
 
             <div className="grid sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700">City</Label>
-                <Select required value={form.city} onValueChange={(val) => setForm({...form, city: val})}>
+                <Select required value={form.city} onValueChange={(val) => setForm({ ...form, city: val })}>
                   <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white shadow-sm">
                     <SelectValue placeholder="Select your city" />
                   </SelectTrigger>
@@ -164,18 +159,18 @@ function Checkout() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700">Postal Code (optional)</Label>
-                <Input className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.postal_code} onChange={e => setForm({...form, postal_code: e.target.value})} placeholder="e.g. 54000" />
+                <Input className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.postal_code} onChange={e => setForm({ ...form, postal_code: e.target.value })} placeholder="e.g. 54000" />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700">Notes (optional)</Label>
-              <Textarea className="min-h-[80px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Landmark or delivery instructions" />
+              <Textarea className="min-h-[80px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Landmark or delivery instructions" />
             </div>
 
             <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-4">
               <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                 <Banknote className="h-5 w-5" />
+                <Banknote className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-sm font-bold text-slate-900">Cash on Delivery</p>
@@ -188,11 +183,10 @@ function Checkout() {
             </Button>
           </div>
 
-          {/* Right: Summary Card */}
           <aside className="lg:col-span-5">
             <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm sticky top-32">
               <h2 className="text-lg font-bold text-slate-800 mb-8">Order Summary</h2>
-              
+
               <div className="space-y-6 mb-8 pb-8 border-b border-slate-100">
                 {items.map(i => (
                   <div key={i.product_id} className="flex gap-4 items-start">
@@ -206,32 +200,20 @@ function Checkout() {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      
+
                       <div className="text-sm text-slate-500 mb-3">Rs {i.price.toLocaleString()}</div>
-                      
+
                       <div className="flex justify-between items-center">
-                        {/* Qty Selector */}
                         <div className="flex items-center bg-white rounded-full p-0.5 border border-slate-200 shadow-sm w-fit">
-                          <button
-                            type="button"
-                            onClick={() => setQty(i.product_id, i.quantity - 1)}
-                            className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600"
-                          >
+                          <button type="button" onClick={() => setQty(i.product_id, i.quantity - 1)} className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600">
                             <Minus className="h-3 w-3" />
                           </button>
                           <span className="w-6 text-center text-xs font-medium text-slate-700">{i.quantity}</span>
-                          <button
-                            type="button"
-                            onClick={() => setQty(i.product_id, i.quantity + 1)}
-                            className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600"
-                          >
+                          <button type="button" onClick={() => setQty(i.product_id, i.quantity + 1)} className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600">
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
-                        
-                        <div className="text-sm font-bold text-slate-900">
-                          Rs {(i.price * i.quantity).toLocaleString()}
-                        </div>
+                        <div className="text-sm font-bold text-slate-900">Rs {(i.price * i.quantity).toLocaleString()}</div>
                       </div>
                     </div>
                   </div>
@@ -240,23 +222,22 @@ function Checkout() {
 
               <div className="space-y-4 mb-6">
                 <div className="flex gap-2">
-                  <Input 
-                    placeholder="Discount code" 
+                  <Input
+                    placeholder="Discount code"
                     className="h-12 rounded-xl border-slate-200 bg-slate-50 focus-visible:ring-emerald-500"
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
                     disabled={discountApplied}
                   />
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     variant={discountApplied || discountCode.trim().length === 0 ? "outline" : "default"}
-                    className={`h-12 px-6 rounded-xl font-bold transition-all ${
-                      discountApplied 
-                        ? "border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-red-500" 
+                    className={`h-12 px-6 rounded-xl font-bold transition-all ${discountApplied
+                        ? "border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-red-500"
                         : discountCode.trim().length === 0
                           ? "border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 bg-transparent"
                           : "bg-slate-900 text-white hover:bg-slate-800"
-                    }`}
+                      }`}
                     onClick={() => {
                       if (discountApplied) {
                         setDiscountApplied(false);
@@ -281,22 +262,22 @@ function Checkout() {
 
               <div className="space-y-4">
                 <div className="flex justify-between text-sm">
-                   <span className="text-slate-500">Subtotal</span>
-                   <span className="text-slate-500">Rs {baseSubtotal.toLocaleString()}</span>
+                  <span className="text-slate-500">Subtotal</span>
+                  <span className="text-slate-500">Rs {baseSubtotal.toLocaleString()}</span>
                 </div>
                 {discountApplied && (
                   <div className="flex justify-between text-sm">
-                     <span className="text-slate-500">Discount applied</span>
-                     <span className="text-red-500 font-medium">- Rs {discountAmount.toLocaleString()}</span>
+                    <span className="text-slate-500">Discount applied</span>
+                    <span className="text-red-500 font-medium">- Rs {discountAmount.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
-                   <span className="text-slate-500">Shipping</span>
-                   <span className="text-emerald-500 font-medium">Free</span>
+                  <span className="text-slate-500">Shipping</span>
+                  <span className="text-emerald-500 font-medium">Free</span>
                 </div>
                 <div className="pt-6 mt-6 border-t border-slate-100 flex justify-between items-center">
-                   <span className="text-xl font-bold text-slate-900">Total</span>
-                   <span className="text-xl font-bold text-slate-900">Rs {subtotal.toLocaleString()}</span>
+                  <span className="text-xl font-bold text-slate-900">Total</span>
+                  <span className="text-xl font-bold text-slate-900">Rs {subtotal.toLocaleString()}</span>
                 </div>
               </div>
             </div>
