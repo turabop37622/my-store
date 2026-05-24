@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { trackOrder } from "@/lib/orders.functions";
 import { Button } from "@/components/ui/button";
 import { Loader2, Package, Truck, CheckCircle2, Search } from "lucide-react";
@@ -17,7 +16,6 @@ function TrackOrderPage() {
   const [orderId, setOrderId] = useState("");
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<any>(null);
-  const track = useServerFn(trackOrder);
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +27,7 @@ function TrackOrderPage() {
     setLoading(true);
     setOrder(null);
     try {
-      const res = await track({ data: orderId });
+      const res = await trackOrder(orderId);
       setOrder(res);
     } catch (err: any) {
       toast.error(err.message || "Order not found.");
@@ -50,7 +48,7 @@ function TrackOrderPage() {
   return (
     <main className="min-h-screen bg-[#fcfcfc] pt-32 md:pt-40 pb-24">
       <Toaster richColors position="top-center" />
-      
+
       <div className="mx-auto max-w-[1200px] px-4 md:px-10">
         <div className="text-center space-y-4 mb-16">
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
@@ -72,8 +70,8 @@ function TrackOrderPage() {
                 onChange={(e) => setOrderId(e.target.value)}
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="h-14 px-10 rounded-full bg-[#00a859] hover:bg-[#00904a] text-white font-bold uppercase tracking-widest text-sm transition-all shadow-lg shadow-emerald-500/20 w-full md:w-auto"
               disabled={loading}
             >
@@ -83,8 +81,7 @@ function TrackOrderPage() {
 
           {order && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-              
-              {/* Status Header Card */}
+
               <div className="flex flex-wrap items-center justify-between gap-6 p-8 bg-white border border-slate-200 rounded-[2rem] shadow-sm">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Current Status</p>
@@ -96,12 +93,10 @@ function TrackOrderPage() {
                 </div>
               </div>
 
-              {/* Progress Timeline */}
               <div className="bg-white p-8 md:p-12 border border-slate-200 rounded-[2rem] shadow-sm relative">
-                {/* Connecting Line */}
                 <div className="absolute top-[80px] left-[10%] right-[10%] h-1 bg-slate-100 hidden md:block">
-                  <div 
-                    className="h-full bg-[#00a859] transition-all duration-1000 ease-out" 
+                  <div
+                    className="h-full bg-[#00a859] transition-all duration-1000 ease-out"
                     style={{ width: `${(currentStepIndex / (statusSteps.length - 1)) * 100}%` }}
                   />
                 </div>
@@ -126,10 +121,9 @@ function TrackOrderPage() {
                 </div>
               </div>
 
-              {/* Order Details */}
               <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6 border-b border-slate-100 pb-4">Order Details</h3>
-                
+
                 <div className="space-y-4 mb-8">
                   {order.items.map((item: any, i: number) => (
                     <div key={i} className="flex justify-between items-center py-2">
@@ -138,7 +132,7 @@ function TrackOrderPage() {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total Amount (COD)</p>
