@@ -12,10 +12,88 @@ export const Route = createFileRoute("/track-order")({
   }),
 });
 
+const statusSteps = [
+  { key: "pending", label: "Order Placed", icon: Package },
+  { key: "processing", label: "Processing", icon: Loader2 },
+  { key: "shipped", label: "Shipped", icon: Truck },
+  { key: "delivered", label: "Delivered", icon: CheckCircle2 },
+];
+
+function OrderCard({ order }: { order: any }) {
+  const currentStepIndex = statusSteps.findIndex((s) => s.key === order?.status) ?? 0;
+
+  return (
+    <div className="space-y-6 border border-slate-200 rounded-[2rem] overflow-hidden bg-white shadow-sm">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-6 border-b border-slate-100">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Order ID</p>
+          <p className="text-lg font-bold font-mono text-slate-900">#{order.short_id}</p>
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Status</p>
+          <p className="text-lg font-bold uppercase text-[#00a859]">{order.status}</p>
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total</p>
+          <p className="text-lg font-bold text-slate-900">Rs {order.total_amount.toLocaleString()}</p>
+        </div>
+        {order.created_at && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Date</p>
+            <p className="text-sm font-semibold text-slate-700">
+              {new Date(order.created_at).toLocaleDateString('en-PK')}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Progress */}
+      <div className="px-6 pb-2 relative">
+        <div className="flex items-center justify-between relative">
+          <div className="absolute top-8 left-8 right-8 h-1 bg-slate-100">
+            <div
+              className="h-full bg-[#00a859] transition-all duration-1000"
+              style={{ width: `${(currentStepIndex / (statusSteps.length - 1)) * 100}%` }}
+            />
+          </div>
+          {statusSteps.map((step, idx) => {
+            const isActive = idx <= currentStepIndex;
+            const isCurrent = idx === currentStepIndex;
+            return (
+              <div key={step.key} className="flex flex-col items-center gap-2 relative z-10">
+                <div className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-all shadow-sm ${isActive ? 'bg-[#00a859] text-white' : 'bg-slate-50 border border-slate-200 text-slate-400'}`}>
+                  <step.icon className={`h-6 w-6 ${isCurrent && step.key === 'processing' ? 'animate-spin' : ''}`} />
+                </div>
+                <p className={`text-xs font-bold uppercase tracking-wider text-center ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
+                  {step.label}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Items */}
+      <div className="px-6 pb-6">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 border-t border-slate-100 pt-4">Items</p>
+        <div className="space-y-3">
+          {order.items.map((item: any, i: number) => (
+            <div key={i} className="flex justify-between items-center">
+              <span className="text-sm font-semibold text-slate-800">{item.name} <span className="text-slate-400">× {item.quantity}</span></span>
+              <span className="text-sm font-bold text-slate-900">Rs {item.price.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TrackOrderPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [order, setOrder] = useState<any>(null);
+  const [result, setResult] = useState<{ type: string; orders: any[] } | null>(null);
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,25 +103,16 @@ function TrackOrderPage() {
     }
 
     setLoading(true);
-    setOrder(null);
+    setResult(null);
     try {
       const res = await trackOrder(query.trim());
-      setOrder(res);
+      setResult(res);
     } catch (err: any) {
       toast.error(err.message || "Order not found.");
     } finally {
       setLoading(false);
     }
   };
-
-  const statusSteps = [
-    { key: "pending", label: "Order Placed", icon: Package },
-    { key: "processing", label: "Processing", icon: Loader2 },
-    { key: "shipped", label: "Shipped", icon: Truck },
-    { key: "delivered", label: "Delivered", icon: CheckCircle2 },
-  ];
-
-  const currentStepIndex = statusSteps.findIndex((s) => s.key === order?.status) ?? 0;
 
   return (
     <main className="min-h-screen bg-[#fcfcfc] pt-32 md:pt-40 pb-24">
@@ -79,78 +148,16 @@ function TrackOrderPage() {
             </Button>
           </form>
 
-          {order && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-
-              <div className="flex flex-wrap items-center justify-between gap-6 p-8 bg-white border border-slate-200 rounded-[2rem] shadow-sm">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Current Status</p>
-                  <p className="text-2xl font-bold uppercase text-[#00a859]">{order.status}</p>
-                </div>
-                <div className="text-left md:text-right">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Customer Name</p>
-                  <p className="text-lg font-semibold text-slate-900">{order.customer_name}</p>
-                </div>
-                {order.short_id && (
-                  <div className="text-left md:text-right">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Order ID</p>
-                    <p className="text-lg font-semibold text-slate-900 font-mono">#{order.short_id}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white p-8 md:p-12 border border-slate-200 rounded-[2rem] shadow-sm relative">
-                <div className="absolute top-[80px] left-[10%] right-[10%] h-1 bg-slate-100 hidden md:block">
-                  <div
-                    className="h-full bg-[#00a859] transition-all duration-1000 ease-out"
-                    style={{ width: `${(currentStepIndex / (statusSteps.length - 1)) * 100}%` }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative z-10">
-                  {statusSteps.map((step, idx) => {
-                    const isActive = idx <= currentStepIndex;
-                    const isCurrent = idx === currentStepIndex;
-                    return (
-                      <div key={step.key} className="flex flex-row md:flex-col items-center gap-4 group">
-                        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-sm ${isActive ? 'bg-[#00a859] text-white' : 'bg-slate-50 border border-slate-200 text-slate-400'}`}>
-                          <step.icon className={`h-6 w-6 ${isCurrent && step.key === 'processing' ? 'animate-spin' : ''}`} />
-                        </div>
-                        <div className="text-left md:text-center">
-                          <p className={`text-xs font-bold uppercase tracking-wider ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
-                            {step.label}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6 border-b border-slate-100 pb-4">Order Details</h3>
-
-                <div className="space-y-4 mb-8">
-                  {order.items.map((item: any, i: number) => (
-                    <div key={i} className="flex justify-between items-center py-2">
-                      <span className="text-sm font-semibold text-slate-800">{item.name} <span className="text-slate-400 ml-1">× {item.quantity}</span></span>
-                      <span className="text-sm font-bold text-slate-900">Rs {item.price.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total Amount (COD)</p>
-                    <span className="text-2xl font-bold text-slate-900">Rs {order.total_amount.toLocaleString()}</span>
-                  </div>
-                  <div className="sm:text-right">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Payment Method</p>
-                    <p className="text-sm font-semibold text-slate-800">Cash on Delivery</p>
-                  </div>
-                </div>
-              </div>
-
+          {result && (
+            <div className="space-y-6">
+              {result.orders.length > 1 && (
+                <p className="text-sm font-semibold text-slate-500 text-center">
+                  Found {result.orders.length} orders
+                </p>
+              )}
+              {result.orders.map((order: any) => (
+                <OrderCard key={order.id} order={order} />
+              ))}
             </div>
           )}
         </div>
