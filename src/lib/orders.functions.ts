@@ -31,5 +31,9 @@ export async function trackOrder(query: string) {
   const res = await fetch(`${API_URL}/api/orders/track/${encodeURIComponent(query.trim())}`);
   if (res.status === 404) throw new Error("Order not found. Please check your Order ID, phone number, or email.");
   if (!res.ok) throw new Error(`Server error: ${res.status}`);
-  return await res.json();
+  const data = await res.json();
+  // Agar backend ne { type, orders } format mein return kiya
+  if (data.orders) return data;
+  // Purana format — single order
+  return { type: 'single', orders: [data] };
 }
