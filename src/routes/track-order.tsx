@@ -13,21 +13,21 @@ export const Route = createFileRoute("/track-order")({
 });
 
 function TrackOrderPage() {
-  const [orderId, setOrderId] = useState("");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<any>(null);
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (orderId.length < 24) {
-      toast.error("Please enter a valid 24-character Order ID.");
+    if (query.trim().length < 8) {
+      toast.error("Please enter your Order ID, phone number, or email.");
       return;
     }
 
     setLoading(true);
     setOrder(null);
     try {
-      const res = await trackOrder(orderId);
+      const res = await trackOrder(query.trim());
       setOrder(res);
     } catch (err: any) {
       toast.error(err.message || "Order not found.");
@@ -55,7 +55,7 @@ function TrackOrderPage() {
             Track Your Order
           </h1>
           <p className="text-slate-500 text-sm md:text-base max-w-md mx-auto">
-            Enter your 24-character Order ID to check the current status of your delivery.
+            Enter your Order ID (8 or 24 characters), phone number, or email address.
           </p>
         </div>
 
@@ -64,10 +64,10 @@ function TrackOrderPage() {
             <div className="relative flex-1">
               <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <input
-                placeholder="Paste your Order ID here..."
+                placeholder="Order ID, phone number, or email..."
                 className="w-full h-14 pl-14 pr-6 rounded-full bg-transparent border-none focus:ring-0 text-slate-900 font-medium outline-none placeholder:text-slate-400"
-                value={orderId}
-                onChange={(e) => setOrderId(e.target.value)}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
               />
             </div>
             <Button
@@ -91,6 +91,12 @@ function TrackOrderPage() {
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Customer Name</p>
                   <p className="text-lg font-semibold text-slate-900">{order.customer_name}</p>
                 </div>
+                {order.short_id && (
+                  <div className="text-left md:text-right">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Order ID</p>
+                    <p className="text-lg font-semibold text-slate-900 font-mono">#{order.short_id}</p>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white p-8 md:p-12 border border-slate-200 rounded-[2rem] shadow-sm relative">

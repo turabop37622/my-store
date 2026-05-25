@@ -1,14 +1,5 @@
 import { API_URL } from "./db";
 
-const ItemSchema = {
-  validate: (item: any) => {
-    if (!item.product_id || !item.name || !item.price || !item.quantity) {
-      throw new Error("Invalid item");
-    }
-    return item;
-  }
-};
-
 export async function placeOrder(data: {
   customer_name: string;
   phone: string;
@@ -36,9 +27,9 @@ export async function placeOrder(data: {
   return await res.json();
 }
 
-export async function trackOrder(id: string) {
-  const res = await fetch(`${API_URL}/api/orders/track/${id}`);
-  if (res.status === 404) throw new Error("Order not found.");
+export async function trackOrder(query: string) {
+  const res = await fetch(`${API_URL}/api/orders/track/${encodeURIComponent(query.trim())}`);
+  if (res.status === 404) throw new Error("Order not found. Please check your Order ID, phone number, or email.");
   if (!res.ok) throw new Error(`Server error: ${res.status}`);
   return await res.json();
 }

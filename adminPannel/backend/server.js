@@ -132,19 +132,16 @@ async function sendOrderEmail(order) {
 </html>`
       })
     });
-
     const data = await response.json();
     console.log("Brevo status:", response.status);
     console.log("Brevo response:", JSON.stringify(data));
-
   } catch (err) {
     console.error("Email send error:", err);
   }
 }
 
-// ─── REVIEW EMAIL ─────────────────────────────────
 async function sendReviewEmail(order) {
-  if (!order.email) return; // email nahi hai toh skip
+  if (!order.email) return;
   try {
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -175,29 +172,7 @@ async function sendReviewEmail(order) {
             <h2 style="margin:0 0 12px;color:#111827;font-size:22px;font-weight:800;">Your order has been delivered!</h2>
             <p style="margin:0 0 8px;color:#6b7280;font-size:15px;">Hi <strong>${order.customer_name}</strong>, we hope you love your purchase!</p>
             <p style="margin:0 0 32px;color:#6b7280;font-size:14px;">We'd love to hear your feedback — it helps us improve.</p>
-
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:12px;padding:20px;margin-bottom:32px;text-align:left;">
-              <tr>
-                <td>
-                  <p style="margin:0 0 10px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Items Ordered</p>
-                  ${order.items.map(i => `
-                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
-                    <tr>
-                      <td>
-                        <p style="margin:0;color:#111827;font-size:14px;font-weight:600;">• ${i.name}</p>
-                        <p style="margin:2px 0 0;color:#6b7280;font-size:12px;">Qty: ${i.quantity}</p>
-                      </td>
-                    </tr>
-                  </table>`).join('')}
-                </td>
-              </tr>
-            </table>
-
-            <p style="margin:0 0 8px;color:#374151;font-size:14px;">How would you rate your experience with BreezyGo?</p>
-            <div style="font-size:36px;letter-spacing:4px;margin-bottom:32px;">😍 😊 😐 😕 😞</div>
-
             <p style="margin:32px 0 0;color:#9ca3af;font-size:12px;">Thank you for shopping with <strong>BreezyGo</strong> 💚</p>
-            <p style="margin:4px 0 0;color:#9ca3af;font-size:11px;">${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
           </td>
         </tr>
       </table>
@@ -207,7 +182,6 @@ async function sendReviewEmail(order) {
 </html>`
       })
     });
-
     const data = await response.json();
     console.log("Review email status:", response.status, JSON.stringify(data));
   } catch (err) {
@@ -340,16 +314,48 @@ app.post('/api/orders', async (req, res) => {
 });
 
 // ─── PUBLIC ORDER TRACK ───────────────────────────
-app.get('/api/orders/track/:id', async (req, res) => {
+app.get('/api/orders/track/:query', async (req, res) => {
   try {
     const database = await connectDB();
-    if (!ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ error: 'Invalid Order ID' });
+    const query = req.params.query.trim();
+    let order = null;
+
+    // 24-char MongoDB ID
+    if (query.length === 24 && ObjectId.isValid(query)) {
+      order = await database.collection("orders").findOne({ _id: new ObjectId(query) });
     }
-    const order = await database.collection("orders").findOne({ _id: new ObjectId(req.params.id) });
+
+    // 8-char short ID (last 8 chars of MongoDB ID, jo email mein hoti hai)
+    if (!order && query.length === 8) {
+      const all = await database.collection("orders")
+        .find({})
+        .sort({ created_at: -1 })
+        .limit(500)
+        .toArray();
+      order = all.find(o => o._id.toString().slice(-8).toUpperCase() === query.toUpperCase()) || null;
+    }
+
+    // Phone number
+    if (!order) {
+      order = await database.collection("orders").findOne(
+        { phone: query },
+        { sort: { created_at: -1 } }
+      );
+    }
+
+    // Email
+    if (!order) {
+      order = await database.collection("orders").findOne(
+        { email: query.toLowerCase() },
+        { sort: { created_at: -1 } }
+      );
+    }
+
     if (!order) return res.status(404).json({ error: 'Order not found' });
+
     res.json({
       id: order._id.toString(),
+      short_id: order._id.toString().slice(-8).toUpperCase(),
       status: order.status || 'pending',
       total_amount: order.total_amount || 0,
       subtotal: order.subtotal || 0,
@@ -426,8 +432,6 @@ app.post('/api/admin/orders', async (req, res) => {
       { _id: new ObjectId(id) },
       { $set: { status, updated_at: new Date() } }
     );
-
-    // ✅ Delivered hone par customer ko review mail bhejo
     if (status === 'delivered') {
       const order = await database.collection("orders").findOne({ _id: new ObjectId(id) });
       if (order && order.email) {
@@ -438,12 +442,10 @@ app.post('/api/admin/orders', async (req, res) => {
         });
       }
     }
-
     res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Delete ALL orders
 app.delete('/api/admin/orders', async (req, res) => {
   try {
     const database = await connectDB();
@@ -506,7 +508,6 @@ app.put('/api/admin/products/:id', async (req, res) => {
     }
     const database = await connectDB();
     const { name, slug, price, original_price, category, tagline, image_url, stock, is_active } = req.body;
-    
     const updateDoc = {
       name,
       price: Number(price),
@@ -517,10 +518,8 @@ app.put('/api/admin/products/:id', async (req, res) => {
       is_active: is_active !== false,
       updated_at: new Date()
     };
-    
     if (slug) updateDoc.slug = slug;
     if (image_url) updateDoc.image_url = image_url;
-
     await database.collection("products").updateOne(
       { _id: new ObjectId(req.params.id) },
       { $set: updateDoc }
@@ -600,7 +599,6 @@ const isMain = typeof process !== 'undefined' && process.argv[1] && fileURLToPat
 if (isMain) {
   app.listen(PORT, () => {
     console.log(`Admin Backend running on http://localhost:${PORT}`);
-    console.log(`Password: ${ADMIN_PASSWORD}`);
   });
 }
 
