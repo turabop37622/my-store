@@ -1,4 +1,4 @@
-import { MongoClient, ObjectId } from 'mongodb';
+﻿import { MongoClient, ObjectId } from 'mongodb';
 
 // ─── CORS HEADERS ─────────────────────────────────
 const corsHeaders = {
@@ -14,14 +14,30 @@ function jsonResponse(data, status = 200) {
     });
 }
 
-// ─── DB CONNECTION ────────────────────────────────
-let cachedClient = null;
+function formatOrder(order) {
+    return {
+        id: order._id.toString(),
+        short_id: order._id.toString().slice(-8).toUpperCase(),
+        status: order.status || 'pending',
+        total_amount: order.total_amount || 0,
+        subtotal: order.subtotal || 0,
+        discount_amount: order.discount_amount || 0,
+        created_at: order.created_at,
+        customer_name: order.customer_name,
+        phone: order.phone,
+        city: order.city,
+        items: order.items || []
+    };
+}
 
+// ─── DB CONNECTION ────────────────────────────────
 async function connectDB(env) {
-    if (cachedClient) return cachedClient.db(env.MONGODB_DB || 'breezygo');
-    const client = new MongoClient(env.MONGODB_URI);
+    const client = new MongoClient(env.MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 5000,
+        socketTimeoutMS: 5000,
+    });
     await client.connect();
-    cachedClient = client;
     return client.db(env.MONGODB_DB || 'breezygo');
 }
 
@@ -37,7 +53,7 @@ async function sendOrderEmail(order, env) {
             body: JSON.stringify({
                 sender: { name: "BreezyGo Store", email: "turabop37622@gmail.com" },
                 to: [{ email: env.ADMIN_EMAIL || "turabop37622@gmail.com" }],
-                subject: `🛒 New Order - Rs ${order.total_amount.toLocaleString()} - ${order.customer_name}`,
+                subject: `New Order - Rs ${order.total_amount.toLocaleString()} - ${order.customer_name}`,
                 htmlContent: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -47,13 +63,13 @@ async function sendOrderEmail(order, env) {
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
         <tr>
           <td style="background:linear-gradient(135deg,#10b981,#059669);padding:40px 40px 30px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;letter-spacing:-0.5px;">🛒 BreezyGo</h1>
+            <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">BreezyGo</h1>
             <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Premium Lifestyle Tech</p>
           </td>
         </tr>
         <tr>
           <td style="background:#ecfdf5;padding:20px 40px;border-bottom:2px solid #d1fae5;">
-            <p style="margin:0;color:#065f46;font-size:16px;font-weight:700;text-align:center;">🎉 New Order Received!</p>
+            <p style="margin:0;color:#065f46;font-size:16px;font-weight:700;text-align:center;">New Order Received!</p>
           </td>
         </tr>
         <tr>
@@ -61,7 +77,7 @@ async function sendOrderEmail(order, env) {
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:12px;padding:20px;margin-bottom:24px;">
               <tr>
                 <td>
-                  <p style="margin:0 0 4px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Order ID</p>
+                  <p style="margin:0 0 4px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Order ID</p>
                   <p style="margin:0;color:#111827;font-size:16px;font-weight:700;font-family:monospace;">#${order.id.slice(-8).toUpperCase()}</p>
                 </td>
                 <td align="right">
@@ -69,7 +85,7 @@ async function sendOrderEmail(order, env) {
                 </td>
               </tr>
             </table>
-            <h3 style="margin:0 0 16px;color:#111827;font-size:16px;font-weight:700;border-bottom:2px solid #f3f4f6;padding-bottom:12px;">👤 Customer Details</h3>
+            <h3 style="margin:0 0 16px;color:#111827;font-size:16px;font-weight:700;border-bottom:2px solid #f3f4f6;padding-bottom:12px;">Customer Details</h3>
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
               <tr>
                 <td width="50%" style="padding:8px 0;">
@@ -88,13 +104,13 @@ async function sendOrderEmail(order, env) {
                 </td>
               </tr>
             </table>
-            <h3 style="margin:0 0 16px;color:#111827;font-size:16px;font-weight:700;border-bottom:2px solid #f3f4f6;padding-bottom:12px;">📦 Order Items</h3>
+            <h3 style="margin:0 0 16px;color:#111827;font-size:16px;font-weight:700;border-bottom:2px solid #f3f4f6;padding-bottom:12px;">Order Items</h3>
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
               ${order.items.map(i => `
               <tr>
                 <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
                   <p style="margin:0;color:#111827;font-size:15px;font-weight:600;">${i.name}</p>
-                  <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Qty: ${i.quantity} × Rs ${i.price.toLocaleString()}</p>
+                  <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Qty: ${i.quantity} x Rs ${i.price.toLocaleString()}</p>
                 </td>
                 <td align="right" style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
                   <p style="margin:0;color:#10b981;font-size:15px;font-weight:700;">Rs ${i.line_total.toLocaleString()}</p>
@@ -115,8 +131,7 @@ async function sendOrderEmail(order, env) {
         </tr>
         <tr>
           <td style="background:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#6b7280;font-size:13px;">This is an automated notification from <strong>BreezyGo Store</strong></p>
-            <p style="margin:8px 0 0;color:#9ca3af;font-size:12px;">${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
+            <p style="margin:0;color:#6b7280;font-size:13px;">Automated notification from <strong>BreezyGo Store</strong></p>
           </td>
         </tr>
       </table>
@@ -144,27 +159,24 @@ async function sendReviewEmail(order, env) {
             body: JSON.stringify({
                 sender: { name: "BreezyGo Store", email: "turabop37622@gmail.com" },
                 to: [{ email: order.email }],
-                subject: `⭐ How was your order, ${order.customer_name}?`,
+                subject: `How was your order, ${order.customer_name}?`,
                 htmlContent: `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;">
         <tr>
           <td style="background:linear-gradient(135deg,#10b981,#059669);padding:40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">🛒 BreezyGo</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Premium Lifestyle Tech</p>
+            <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">BreezyGo</h1>
           </td>
         </tr>
         <tr>
           <td style="padding:40px;text-align:center;">
-            <div style="font-size:56px;margin-bottom:16px;">⭐</div>
             <h2 style="margin:0 0 12px;color:#111827;font-size:22px;font-weight:800;">Your order has been delivered!</h2>
-            <p style="margin:0 0 8px;color:#6b7280;font-size:15px;">Hi <strong>${order.customer_name}</strong>, we hope you love your purchase!</p>
-            <p style="margin:0 0 32px;color:#6b7280;font-size:14px;">We'd love to hear your feedback — it helps us improve.</p>
-            <p style="margin:32px 0 0;color:#9ca3af;font-size:12px;">Thank you for shopping with <strong>BreezyGo</strong> 💚</p>
+            <p style="margin:0;color:#6b7280;font-size:15px;">Hi <strong>${order.customer_name}</strong>, we hope you love your purchase!</p>
+            <p style="margin:32px 0 0;color:#9ca3af;font-size:12px;">Thank you for shopping with <strong>BreezyGo</strong></p>
           </td>
         </tr>
       </table>
@@ -186,7 +198,6 @@ export default {
         const path = url.pathname;
         const method = request.method;
 
-        // OPTIONS preflight
         if (method === 'OPTIONS') {
             return new Response(null, { status: 204, headers: corsHeaders });
         }
@@ -253,9 +264,7 @@ export default {
                 const body = await request.json();
                 const { customer_name, phone, email, city, address, postal_code, notes, discount_code, items } = body;
 
-                if (!Array.isArray(items)) {
-                    return jsonResponse({ error: "Items must be an array" }, 400);
-                }
+                if (!Array.isArray(items)) return jsonResponse({ error: "Items must be an array" }, 400);
 
                 for (const item of items) {
                     if (!item.product_id || !ObjectId.isValid(item.product_id)) {
@@ -265,8 +274,7 @@ export default {
 
                 const objectIds = items.map(i => new ObjectId(i.product_id));
                 const dbProducts = await db.collection("products")
-                    .find({ _id: { $in: objectIds }, is_active: true })
-                    .toArray();
+                    .find({ _id: { $in: objectIds }, is_active: true }).toArray();
 
                 const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
                 const trustedItems = items.map(i => {
@@ -305,8 +313,7 @@ export default {
                 await sendOrderEmail({
                     id: result.insertedId.toString(),
                     customer_name, phone, city, address,
-                    items: trustedItems,
-                    total_amount
+                    items: trustedItems, total_amount
                 }, env);
 
                 return jsonResponse({ success: true, id: result.insertedId.toString(), total_amount });
@@ -314,52 +321,37 @@ export default {
 
             // ─── PUBLIC ORDER TRACK ───────────────────────
             if (path.startsWith('/api/orders/track/') && method === 'GET') {
-                const query = path.replace('/api/orders/track/', '').trim();
+                const query = decodeURIComponent(path.replace('/api/orders/track/', '')).trim();
                 const db = await connectDB(env);
-                let order = null;
 
+                // 24-char MongoDB ID
                 if (query.length === 24 && ObjectId.isValid(query)) {
-                    order = await db.collection("orders").findOne({ _id: new ObjectId(query) });
+                    const order = await db.collection("orders").findOne({ _id: new ObjectId(query) });
+                    if (!order) return jsonResponse({ error: 'Order not found' }, 404);
+                    return jsonResponse({ type: 'single', orders: [formatOrder(order)] });
                 }
 
-                if (!order && query.length === 8) {
+                // 8-char short ID
+                if (query.length === 8) {
                     const all = await db.collection("orders")
-                        .find({})
-                        .sort({ created_at: -1 })
-                        .limit(500)
-                        .toArray();
-                    order = all.find(o => o._id.toString().slice(-8).toUpperCase() === query.toUpperCase()) || null;
+                        .find({}).sort({ created_at: -1 }).limit(500).toArray();
+                    const order = all.find(o => o._id.toString().slice(-8).toUpperCase() === query.toUpperCase()) || null;
+                    if (!order) return jsonResponse({ error: 'Order not found' }, 404);
+                    return jsonResponse({ type: 'single', orders: [formatOrder(order)] });
                 }
 
-                if (!order) {
-                    order = await db.collection("orders").findOne(
-                        { phone: query },
-                        { sort: { created_at: -1 } }
-                    );
+                // Phone number
+                let orders = await db.collection("orders")
+                    .find({ phone: query }).sort({ created_at: -1 }).toArray();
+
+                // Email
+                if (orders.length === 0) {
+                    orders = await db.collection("orders")
+                        .find({ email: query.toLowerCase() }).sort({ created_at: -1 }).toArray();
                 }
 
-                if (!order) {
-                    order = await db.collection("orders").findOne(
-                        { email: query.toLowerCase() },
-                        { sort: { created_at: -1 } }
-                    );
-                }
-
-                if (!order) return jsonResponse({ error: 'Order not found' }, 404);
-
-                return jsonResponse({
-                    id: order._id.toString(),
-                    short_id: order._id.toString().slice(-8).toUpperCase(),
-                    status: order.status || 'pending',
-                    total_amount: order.total_amount || 0,
-                    subtotal: order.subtotal || 0,
-                    discount_amount: order.discount_amount || 0,
-                    created_at: order.created_at,
-                    customer_name: order.customer_name,
-                    phone: order.phone,
-                    city: order.city,
-                    items: order.items || []
-                });
+                if (orders.length === 0) return jsonResponse({ error: 'No orders found' }, 404);
+                return jsonResponse({ type: 'multiple', orders: orders.map(formatOrder) });
             }
 
             // ─── ADMIN STATS ──────────────────────────────
@@ -512,8 +504,7 @@ export default {
                 const { name, email, subject, message } = await request.json();
                 const result = await db.collection("contact_messages").insertOne({
                     name, email, subject, message,
-                    status: 'unread',
-                    created_at: new Date()
+                    status: 'unread', created_at: new Date()
                 });
                 if (!result.acknowledged) throw new Error("Could not submit message.");
                 return jsonResponse({ success: true });
@@ -551,7 +542,6 @@ export default {
                 return jsonResponse({ success: true });
             }
 
-            // ─── 404 ──────────────────────────────────────
             return jsonResponse({ error: "Not found" }, 404);
 
         } catch (error) {
