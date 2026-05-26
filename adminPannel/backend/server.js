@@ -237,7 +237,8 @@ app.get('/api/products', async (req, res) => {
       rating: p.rating || 4.5,
       is_featured: p.is_featured || false,
       stock: p.stock || 100,
-      details: p.details || []
+      details: p.details || [],
+      images: p.images || (p.image_url ? [p.image_url] : [])
     })));
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -260,7 +261,8 @@ app.get('/api/products/:slug', async (req, res) => {
       rating: product.rating || 4.5,
       is_featured: product.is_featured || false,
       stock: product.stock || 100,
-      details: product.details || []
+      details: product.details || [],
+      images: product.images || (product.image_url ? [product.image_url] : [])
     });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -482,7 +484,8 @@ app.get('/api/admin/products', async (req, res) => {
       image_url: p.image_url || '',
       is_active: p.is_active !== false,
       status: p.is_active !== false ? 'Active' : 'Out of Stock',
-      details: p.details || []
+      details: p.details || [],
+      images: p.images || (p.image_url ? [p.image_url] : [])
     })));
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -490,13 +493,14 @@ app.get('/api/admin/products', async (req, res) => {
 app.post('/api/admin/products', async (req, res) => {
   try {
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock, details } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, details, images } = req.body;
     const result = await database.collection("products").insertOne({
       name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
       price: Number(price), original_price: original_price ? Number(original_price) : null,
       category, tagline: tagline || '', image_url: image_url || '',
       stock: Number(stock) || 100, is_active: true, is_featured: false,
-      rating: 4.5, created_at: new Date(), details: details || []
+      rating: 4.5, created_at: new Date(), details: details || [],
+      images: images || []
     });
     res.json({ success: true, id: result.insertedId.toString() });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -508,7 +512,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       return res.status(400).json({ error: "Invalid product ID" });
     }
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images } = req.body;
     const updateDoc = {
       name,
       price: Number(price),
@@ -520,6 +524,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       details: details || [],
       updated_at: new Date()
     };
+    if (images) updateDoc.images = images;
     if (slug) updateDoc.slug = slug;
     if (image_url) updateDoc.image_url = image_url;
     await database.collection("products").updateOne(

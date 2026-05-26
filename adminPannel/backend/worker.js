@@ -230,11 +230,11 @@ export default {
                     original_price: p.original_price || null,
                     category: p.category,
                     tagline: p.tagline || '',
-                    image_url: p.image_url || '',
                     rating: p.rating || 4.5,
                     is_featured: p.is_featured || false,
                     stock: p.stock || 100,
-                    details: p.details || []
+                    details: p.details || [],
+                    images: p.images || (p.image_url ? [p.image_url] : [])
                 })));
             }
 
@@ -252,11 +252,11 @@ export default {
                     original_price: product.original_price || null,
                     category: product.category,
                     tagline: product.tagline || '',
-                    image_url: product.image_url || '',
                     rating: product.rating || 4.5,
                     is_featured: product.is_featured || false,
                     stock: product.stock || 100,
-                    details: product.details || []
+                    details: product.details || [],
+                    images: product.images || (product.image_url ? [product.image_url] : [])
                 });
             }
 
@@ -450,24 +450,25 @@ export default {
                     original_price: p.original_price || null,
                     stock: p.stock || 100,
                     category: p.category,
-                    tagline: p.tagline || '',
                     image_url: p.image_url || '',
                     is_active: p.is_active !== false,
                     status: p.is_active !== false ? 'Active' : 'Out of Stock',
-                    details: p.details || []
+                    details: p.details || [],
+                    images: p.images || (p.image_url ? [p.image_url] : [])
                 })));
             }
 
             // ─── ADMIN PRODUCTS ADD ───────────────────────
             if (path === '/api/admin/products' && method === 'POST') {
                 const db = await connectDB(env);
-                const { name, slug, price, original_price, category, tagline, image_url, stock, details } = await request.json();
+                const { name, slug, price, original_price, category, tagline, image_url, stock, details, images } = await request.json();
                 const result = await db.collection("products").insertOne({
                     name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
                     price: Number(price), original_price: original_price ? Number(original_price) : null,
                     category, tagline: tagline || '', image_url: image_url || '',
                     stock: Number(stock) || 100, is_active: true, is_featured: false,
-                    rating: 4.5, created_at: new Date(), details: details || []
+                    rating: 4.5, created_at: new Date(), details: details || [],
+                    images: images || []
                 });
                 return jsonResponse({ success: true, id: result.insertedId.toString() });
             }
@@ -477,7 +478,7 @@ export default {
                 const id = path.replace('/api/admin/products/', '');
                 if (!ObjectId.isValid(id)) return jsonResponse({ error: "Invalid product ID" }, 400);
                 const db = await connectDB(env);
-                const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details } = await request.json();
+                const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images } = await request.json();
                 const updateDoc = {
                     name, price: Number(price),
                     original_price: original_price ? Number(original_price) : null,
@@ -487,6 +488,7 @@ export default {
                     details: details || [],
                     updated_at: new Date()
                 };
+                if (images) updateDoc.images = images;
                 if (slug) updateDoc.slug = slug;
                 if (image_url) updateDoc.image_url = image_url;
                 await db.collection("products").updateOne({ _id: new ObjectId(id) }, { $set: updateDoc });

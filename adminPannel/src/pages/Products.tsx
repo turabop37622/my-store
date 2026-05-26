@@ -14,9 +14,10 @@ interface ProductForm {
   name: string; price: string; original_price: string; category: string;
   tagline: string; stock: string; image_url: string;
   details: ProductDetail[];
+  images: string[];
 }
 
-const emptyForm: ProductForm = { name: "", price: "", original_price: "", category: "Earbuds", tagline: "", stock: "100", image_url: "", details: [] };
+const emptyForm: ProductForm = { name: "", price: "", original_price: "", category: "Earbuds", tagline: "", stock: "100", image_url: "", details: [], images: [] };
 
 export default function Products() {
   const [products, setProducts] = useState<any[]>([]);
@@ -40,7 +41,8 @@ export default function Products() {
     setForm({
       name: p.name, price: String(p.price), original_price: p.original_price ? String(p.original_price) : "",
       category: p.category, tagline: p.tagline || "", stock: String(p.stock), image_url: p.image_url || "",
-      details: p.details || []
+      details: p.details || [],
+      images: p.images || (p.image_url ? [p.image_url] : [])
     });
     setEditingId(p.id);
     setShowModal(true);
@@ -55,15 +57,15 @@ export default function Products() {
       if (editingId) {
         await axios.put(`${backendUrl}/api/admin/products/${editingId}`, {
           name: form.name, price: form.price, original_price: form.original_price || null,
-          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.image_url, is_active: true,
-          details: form.details
+          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.images[0] || form.image_url, is_active: true,
+          details: form.details, images: form.images
         });
         toast.success("Product updated!");
       } else {
         await axios.post(`${backendUrl}/api/admin/products`, {
           name: form.name, price: form.price, original_price: form.original_price || null,
-          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.image_url,
-          details: form.details
+          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.images[0] || form.image_url,
+          details: form.details, images: form.images
         });
         toast.success("Product added!");
       }
@@ -198,11 +200,11 @@ export default function Products() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Image / Image URL</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Images</label>
                 <div className="flex flex-col gap-2">
-                  <input type="file" accept="image/*" onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) {
+                  <input type="file" multiple accept="image/*" onChange={e => {
+                    const files = Array.from(e.target.files || []);
+                    files.forEach(file => {
                       const reader = new FileReader();
                       reader.onloadend = () => {
                         const img = new Image();
@@ -220,17 +222,39 @@ export default function Products() {
                           const ctx = canvas.getContext('2d');
                           if (ctx) {
                             ctx.drawImage(img, 0, 0, width, height);
-                            setForm({ ...form, image_url: canvas.toDataURL('image/webp', 0.8) });
+                            setForm(prev => ({ ...prev, images: [...prev.images, canvas.toDataURL('image/webp', 0.8)] }));
                           }
                         };
                         img.src = reader.result as string;
                       };
                       reader.readAsDataURL(file);
-                    }
+                    });
                   }} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" />
-                  <input value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})}
-                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Or enter URL here (e.g., /assets/products/image.webp)" />
-                  {form.image_url && <img src={form.image_url} alt="Preview" className="h-20 w-20 object-cover rounded-xl border border-slate-200" />}
+                  
+                  {form.images.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {form.images.map((img, idx) => (
+                        <div key={idx} className="relative group">
+                          <img src={img} alt="Preview" className="h-20 w-20 object-cover rounded-xl border border-slate-200" />
+                          <button type="button" onClick={() => setForm({ ...form, images: form.images.filter((_, i) => i !== idx) })}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {form.images.length === 0 && form.image_url && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <div className="relative group">
+                        <img src={form.image_url} alt="Preview" className="h-20 w-20 object-cover rounded-xl border border-slate-200" />
+                        <button type="button" onClick={() => setForm({ ...form, image_url: "" })}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

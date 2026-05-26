@@ -23,6 +23,7 @@ function ProductPage() {
   const fetchProduct = useServerFn(getProductBySlug);
   const add = useCart((s) => s.add);
   const [qty, setQty] = useState(1);
+  const [activeImage, setActiveImage] = useState<string | null>(null);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -64,17 +65,39 @@ function ProductPage() {
 
         <div className="grid lg:grid-cols-2 gap-12 items-start">
           {/* Image Section */}
-          <div className="aspect-square rounded-3xl overflow-hidden bg-secondary border border-border relative">
-             {discount && (
-                <span className="absolute top-4 right-4 z-10 bg-red-600 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1.5 rounded-full">
-                  {discount}% OFF
-                </span>
-              )}
-            <img
-              src={getProductImage(product.image_url)}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
+          <div className="space-y-4">
+            <div className="aspect-square rounded-3xl overflow-hidden bg-secondary border border-border relative">
+               {discount && (
+                  <span className="absolute top-4 right-4 z-10 bg-red-600 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1.5 rounded-full">
+                    {discount}% OFF
+                  </span>
+                )}
+              <img
+                src={getProductImage(activeImage || (product.images && product.images.length > 0 ? product.images[0] : product.image_url))}
+                alt={product.name}
+                className="w-full h-full object-cover transition-opacity duration-300"
+              />
+            </div>
+            
+            {/* Thumbnails */}
+            {product.images && product.images.length > 1 && (
+              <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
+                {product.images.map((img, idx) => {
+                  const isActive = (activeImage || product.images![0]) === img;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImage(img)}
+                      className={`relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${
+                        isActive ? "border-[#00a859] opacity-100 ring-2 ring-[#00a859]/20" : "border-transparent opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      <img src={getProductImage(img)} alt={`${product.name} view ${idx + 1}`} className="w-full h-full object-cover bg-secondary" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Info Section */}

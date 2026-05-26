@@ -14,6 +14,7 @@ export type Product = {
   badge: string | null;
   rating: number | null;
   is_featured: boolean;
+  images?: string[];
 };
 
 export async function listProducts(): Promise<Product[]> {
