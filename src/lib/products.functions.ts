@@ -28,10 +28,9 @@ export async function listProducts(): Promise<Product[]> {
   }
 }
 
-export async function getProductBySlug(slug: string): Promise<Product | null> {
-  if (typeof window === "undefined") return null;
+export async function getProductBySlug({ data }: { data: { slug: string } }): Promise<Product | null> {
   try {
-    const res = await fetch(`${API_URL}/api/products/${slug}`);
+    const res = await fetch(`${API_URL}/api/products/${data.slug}`);
     if (!res.ok) return null;
     return await res.json() as Product;
   } catch {
