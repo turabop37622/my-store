@@ -7,7 +7,7 @@ import { getProductImage } from "@/lib/product-images";
 import { useCart } from "@/lib/cart-store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Minus, Plus, Star, ShieldCheck, Truck, Banknote, ArrowLeft, ArrowRight } from "lucide-react";
+import { Minus, Plus, Star, ShieldCheck, Truck, Banknote, ArrowLeft, ArrowRight, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -24,6 +24,7 @@ function ProductPage() {
   const add = useCart((s) => s.add);
   const [qty, setQty] = useState(1);
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -66,7 +67,10 @@ function ProductPage() {
         <div className="grid lg:grid-cols-2 gap-12 items-start">
           {/* Image Section */}
           <div className="space-y-4">
-            <div className="aspect-square rounded-3xl overflow-hidden bg-secondary border border-border relative">
+            <div 
+              className="aspect-square rounded-3xl overflow-hidden bg-secondary border border-border relative cursor-zoom-in group"
+              onClick={() => setIsFullscreen(true)}
+            >
                {discount && (
                   <span className="absolute top-4 right-4 z-10 bg-red-600 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1.5 rounded-full">
                     {discount}% OFF
@@ -77,6 +81,34 @@ function ProductPage() {
                 alt={product.name}
                 className="w-full h-full object-cover transition-opacity duration-300"
               />
+              
+              {/* Navigation Arrows */}
+              {product.images && product.images.length > 1 && (
+                <>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const imgs = product.images!;
+                      const curr = imgs.indexOf(activeImage || imgs[0]);
+                      setActiveImage(imgs[(curr - 1 + imgs.length) % imgs.length]);
+                    }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/80 text-slate-800 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const imgs = product.images!;
+                      const curr = imgs.indexOf(activeImage || imgs[0]);
+                      setActiveImage(imgs[(curr + 1) % imgs.length]);
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/80 text-slate-800 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              )}
             </div>
             
             {/* Thumbnails */}
@@ -173,6 +205,51 @@ function ProductPage() {
 
         <ProductDetails product={product} />
       </div>
+
+      {/* Fullscreen Image Modal */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md">
+          <button 
+            onClick={() => setIsFullscreen(false)} 
+            className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-2"
+          >
+            <X className="h-8 w-8" />
+          </button>
+          
+          <img
+            src={getProductImage(activeImage || (product.images && product.images.length > 0 ? product.images[0] : product.image_url))}
+            alt={product.name}
+            className="max-w-[90vw] max-h-[90vh] object-contain select-none"
+          />
+
+          {product.images && product.images.length > 1 && (
+            <>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const imgs = product.images!;
+                  const curr = imgs.indexOf(activeImage || imgs[0]);
+                  setActiveImage(imgs[(curr - 1 + imgs.length) % imgs.length]);
+                }}
+                className="absolute left-4 md:left-10 top-1/2 -translate-y-1/2 h-14 w-14 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+              >
+                <ChevronLeft className="h-8 w-8" />
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const imgs = product.images!;
+                  const curr = imgs.indexOf(activeImage || imgs[0]);
+                  setActiveImage(imgs[(curr + 1) % imgs.length]);
+                }}
+                className="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 h-14 w-14 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+              >
+                <ChevronRight className="h-8 w-8" />
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </main>
   );
 }
