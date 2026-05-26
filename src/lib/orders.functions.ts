@@ -28,12 +28,11 @@ export async function placeOrder(data: {
 }
 
 export async function trackOrder(query: string) {
+  if (typeof window === "undefined") throw new Error("Client only");
   const res = await fetch(`${API_URL}/api/orders/track/${encodeURIComponent(query.trim())}`);
   if (res.status === 404) throw new Error("Order not found. Please check your Order ID, phone number, or email.");
   if (!res.ok) throw new Error(`Server error: ${res.status}`);
   const data = await res.json();
-  // Agar backend ne { type, orders } format mein return kiya
   if (data.orders) return data;
-  // Purana format — single order
   return { type: 'single', orders: [data] };
 }

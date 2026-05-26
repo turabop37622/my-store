@@ -32,6 +32,22 @@ async function connectDB() {
   return dbPromise;
 }
 
+function formatOrder(order) {
+  return {
+    id: order._id.toString(),
+    short_id: order._id.toString().slice(-8).toUpperCase(),
+    status: order.status || 'pending',
+    total_amount: order.total_amount || 0,
+    subtotal: order.subtotal || 0,
+    discount_amount: order.discount_amount || 0,
+    created_at: order.created_at,
+    customer_name: order.customer_name,
+    phone: order.phone,
+    city: order.city,
+    items: order.items || []
+  };
+}
+
 async function sendOrderEmail(order) {
   try {
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -171,7 +187,6 @@ async function sendReviewEmail(order) {
             <div style="font-size:56px;margin-bottom:16px;">⭐</div>
             <h2 style="margin:0 0 12px;color:#111827;font-size:22px;font-weight:800;">Your order has been delivered!</h2>
             <p style="margin:0 0 8px;color:#6b7280;font-size:15px;">Hi <strong>${order.customer_name}</strong>, we hope you love your purchase!</p>
-            <p style="margin:0 0 32px;color:#6b7280;font-size:14px;">We'd love to hear your feedback — it helps us improve.</p>
             <p style="margin:32px 0 0;color:#9ca3af;font-size:12px;">Thank you for shopping with <strong>BreezyGo</strong> 💚</p>
           </td>
         </tr>
@@ -318,54 +333,36 @@ app.get('/api/orders/track/:query', async (req, res) => {
   try {
     const database = await connectDB();
     const query = req.params.query.trim();
-    let order = null;
 
-    // 24-char MongoDB ID
+    // 24-char MongoDB ID - sirf woh specific order
     if (query.length === 24 && ObjectId.isValid(query)) {
-      order = await database.collection("orders").findOne({ _id: new ObjectId(query) });
+      const order = await database.collection("orders").findOne({ _id: new ObjectId(query) });
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      return res.json({ type: 'single', orders: [formatOrder(order)] });
     }
 
-    // 8-char short ID (last 8 chars of MongoDB ID, jo email mein hoti hai)
-    if (!order && query.length === 8) {
+    // 8-char short ID - sirf woh specific order
+    if (query.length === 8) {
       const all = await database.collection("orders")
-        .find({})
-        .sort({ created_at: -1 })
-        .limit(500)
-        .toArray();
-      order = all.find(o => o._id.toString().slice(-8).toUpperCase() === query.toUpperCase()) || null;
+        .find({}).sort({ created_at: -1 }).limit(500).toArray();
+      const order = all.find(o => o._id.toString().slice(-8).toUpperCase() === query.toUpperCase()) || null;
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      return res.json({ type: 'single', orders: [formatOrder(order)] });
     }
 
-    // Phone number
-    if (!order) {
-      order = await database.collection("orders").findOne(
-        { phone: query },
-        { sort: { created_at: -1 } }
-      );
+    // Phone number - saare orders
+    let orders = await database.collection("orders")
+      .find({ phone: query }).sort({ created_at: -1 }).toArray();
+
+    // Email - saare orders
+    if (orders.length === 0) {
+      orders = await database.collection("orders")
+        .find({ email: query.toLowerCase() }).sort({ created_at: -1 }).toArray();
     }
 
-    // Email
-    if (!order) {
-      order = await database.collection("orders").findOne(
-        { email: query.toLowerCase() },
-        { sort: { created_at: -1 } }
-      );
-    }
+    if (orders.length === 0) return res.status(404).json({ error: 'No orders found' });
+    return res.json({ type: 'multiple', orders: orders.map(formatOrder) });
 
-    if (!order) return res.status(404).json({ error: 'Order not found' });
-
-    res.json({
-      id: order._id.toString(),
-      short_id: order._id.toString().slice(-8).toUpperCase(),
-      status: order.status || 'pending',
-      total_amount: order.total_amount || 0,
-      subtotal: order.subtotal || 0,
-      discount_amount: order.discount_amount || 0,
-      created_at: order.created_at,
-      customer_name: order.customer_name,
-      phone: order.phone,
-      city: order.city,
-      items: order.items || []
-    });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
