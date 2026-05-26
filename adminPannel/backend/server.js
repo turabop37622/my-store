@@ -12,7 +12,8 @@ if (typeof process !== 'undefined' && process.release?.name === 'node') {
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 let client = null;
 let dbPromise = null;
@@ -235,7 +236,8 @@ app.get('/api/products', async (req, res) => {
       image_url: p.image_url || '',
       rating: p.rating || 4.5,
       is_featured: p.is_featured || false,
-      stock: p.stock || 100
+      stock: p.stock || 100,
+      details: p.details || []
     })));
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -257,7 +259,8 @@ app.get('/api/products/:slug', async (req, res) => {
       image_url: product.image_url || '',
       rating: product.rating || 4.5,
       is_featured: product.is_featured || false,
-      stock: product.stock || 100
+      stock: product.stock || 100,
+      details: product.details || []
     });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -478,7 +481,8 @@ app.get('/api/admin/products', async (req, res) => {
       tagline: p.tagline || '',
       image_url: p.image_url || '',
       is_active: p.is_active !== false,
-      status: p.is_active !== false ? 'Active' : 'Out of Stock'
+      status: p.is_active !== false ? 'Active' : 'Out of Stock',
+      details: p.details || []
     })));
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -486,13 +490,13 @@ app.get('/api/admin/products', async (req, res) => {
 app.post('/api/admin/products', async (req, res) => {
   try {
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, details } = req.body;
     const result = await database.collection("products").insertOne({
       name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
       price: Number(price), original_price: original_price ? Number(original_price) : null,
       category, tagline: tagline || '', image_url: image_url || '',
       stock: Number(stock) || 100, is_active: true, is_featured: false,
-      rating: 4.5, created_at: new Date()
+      rating: 4.5, created_at: new Date(), details: details || []
     });
     res.json({ success: true, id: result.insertedId.toString() });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -504,7 +508,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       return res.status(400).json({ error: "Invalid product ID" });
     }
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details } = req.body;
     const updateDoc = {
       name,
       price: Number(price),
@@ -513,6 +517,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       tagline: tagline || '',
       stock: Number(stock) || 0,
       is_active: is_active !== false,
+      details: details || [],
       updated_at: new Date()
     };
     if (slug) updateDoc.slug = slug;

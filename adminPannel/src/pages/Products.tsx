@@ -5,12 +5,18 @@ import { toast } from "sonner";
 
 const CATEGORIES = ["Earbuds", "Smart Watches", "Headphones", "Speakers", "Accessories"];
 
+interface ProductDetail {
+  key: string;
+  value: string;
+}
+
 interface ProductForm {
   name: string; price: string; original_price: string; category: string;
   tagline: string; stock: string; image_url: string;
+  details: ProductDetail[];
 }
 
-const emptyForm: ProductForm = { name: "", price: "", original_price: "", category: "Earbuds", tagline: "", stock: "100", image_url: "" };
+const emptyForm: ProductForm = { name: "", price: "", original_price: "", category: "Earbuds", tagline: "", stock: "100", image_url: "", details: [] };
 
 export default function Products() {
   const [products, setProducts] = useState<any[]>([]);
@@ -33,7 +39,8 @@ export default function Products() {
   const openEdit = (p: any) => {
     setForm({
       name: p.name, price: String(p.price), original_price: p.original_price ? String(p.original_price) : "",
-      category: p.category, tagline: p.tagline || "", stock: String(p.stock), image_url: p.image_url || ""
+      category: p.category, tagline: p.tagline || "", stock: String(p.stock), image_url: p.image_url || "",
+      details: p.details || []
     });
     setEditingId(p.id);
     setShowModal(true);
@@ -48,13 +55,15 @@ export default function Products() {
       if (editingId) {
         await axios.put(`${backendUrl}/api/admin/products/${editingId}`, {
           name: form.name, price: form.price, original_price: form.original_price || null,
-          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.image_url, is_active: true
+          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.image_url, is_active: true,
+          details: form.details
         });
         toast.success("Product updated!");
       } else {
         await axios.post(`${backendUrl}/api/admin/products`, {
           name: form.name, price: form.price, original_price: form.original_price || null,
-          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.image_url
+          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.image_url,
+          details: form.details
         });
         toast.success("Product added!");
       }
@@ -189,9 +198,73 @@ export default function Products() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Image URL</label>
-                <input value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})}
-                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="/assets/products/image.webp" />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Image / Image URL</label>
+                <div className="flex flex-col gap-2">
+                  <input type="file" accept="image/*" onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        const img = new Image();
+                        img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          let width = img.width;
+                          let height = img.height;
+                          const MAX_SIZE = 800;
+                          if (width > height) {
+                            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                          } else {
+                            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                          }
+                          canvas.width = width; canvas.height = height;
+                          const ctx = canvas.getContext('2d');
+                          if (ctx) {
+                            ctx.drawImage(img, 0, 0, width, height);
+                            setForm({ ...form, image_url: canvas.toDataURL('image/webp', 0.8) });
+                          }
+                        };
+                        img.src = reader.result as string;
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" />
+                  <input value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})}
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Or enter URL here (e.g., /assets/products/image.webp)" />
+                  {form.image_url && <img src={form.image_url} alt="Preview" className="h-20 w-20 object-cover rounded-xl border border-slate-200" />}
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Product Details</label>
+                  <button type="button" onClick={() => setForm({ ...form, details: [...form.details, { key: "", value: "" }] })}
+                    className="text-xs text-emerald-600 font-bold hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full flex items-center gap-1">
+                    <Plus size={14} /> Add Detail
+                  </button>
+                </div>
+                {form.details.map((detail, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input value={detail.key} onChange={e => {
+                        const newDetails = [...form.details];
+                        newDetails[index].key = e.target.value;
+                        setForm({ ...form, details: newDetails });
+                      }}
+                      className="w-1/3 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. Battery" />
+                    <input value={detail.value} onChange={e => {
+                        const newDetails = [...form.details];
+                        newDetails[index].value = e.target.value;
+                        setForm({ ...form, details: newDetails });
+                      }}
+                      className="w-2/3 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. Up to 30 hrs" />
+                    <button type="button" onClick={() => {
+                        const newDetails = form.details.filter((_, i) => i !== index);
+                        setForm({ ...form, details: newDetails });
+                      }}
+                      className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
               </div>
 
               <button type="submit" disabled={saving}

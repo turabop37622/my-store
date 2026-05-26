@@ -22,5 +22,6 @@ export const productImages: Record<string, string> = {
 
 export function getProductImage(key: string | null | undefined): string {
   if (!key) return "/placeholder.svg";
+  if (key.startsWith("data:") || key.startsWith("http") || key.startsWith("/")) return key;
   return productImages[key] ?? "/placeholder.svg";
 }

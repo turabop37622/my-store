@@ -1,4 +1,4 @@
-﻿import { MongoClient, ObjectId } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 // ─── CORS HEADERS ─────────────────────────────────
 const corsHeaders = {
@@ -233,7 +233,8 @@ export default {
                     image_url: p.image_url || '',
                     rating: p.rating || 4.5,
                     is_featured: p.is_featured || false,
-                    stock: p.stock || 100
+                    stock: p.stock || 100,
+                    details: p.details || []
                 })));
             }
 
@@ -254,7 +255,8 @@ export default {
                     image_url: product.image_url || '',
                     rating: product.rating || 4.5,
                     is_featured: product.is_featured || false,
-                    stock: product.stock || 100
+                    stock: product.stock || 100,
+                    details: product.details || []
                 });
             }
 
@@ -451,20 +453,21 @@ export default {
                     tagline: p.tagline || '',
                     image_url: p.image_url || '',
                     is_active: p.is_active !== false,
-                    status: p.is_active !== false ? 'Active' : 'Out of Stock'
+                    status: p.is_active !== false ? 'Active' : 'Out of Stock',
+                    details: p.details || []
                 })));
             }
 
             // ─── ADMIN PRODUCTS ADD ───────────────────────
             if (path === '/api/admin/products' && method === 'POST') {
                 const db = await connectDB(env);
-                const { name, slug, price, original_price, category, tagline, image_url, stock } = await request.json();
+                const { name, slug, price, original_price, category, tagline, image_url, stock, details } = await request.json();
                 const result = await db.collection("products").insertOne({
                     name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
                     price: Number(price), original_price: original_price ? Number(original_price) : null,
                     category, tagline: tagline || '', image_url: image_url || '',
                     stock: Number(stock) || 100, is_active: true, is_featured: false,
-                    rating: 4.5, created_at: new Date()
+                    rating: 4.5, created_at: new Date(), details: details || []
                 });
                 return jsonResponse({ success: true, id: result.insertedId.toString() });
             }
@@ -474,13 +477,14 @@ export default {
                 const id = path.replace('/api/admin/products/', '');
                 if (!ObjectId.isValid(id)) return jsonResponse({ error: "Invalid product ID" }, 400);
                 const db = await connectDB(env);
-                const { name, slug, price, original_price, category, tagline, image_url, stock, is_active } = await request.json();
+                const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details } = await request.json();
                 const updateDoc = {
                     name, price: Number(price),
                     original_price: original_price ? Number(original_price) : null,
                     category, tagline: tagline || '',
                     stock: Number(stock) || 0,
                     is_active: is_active !== false,
+                    details: details || [],
                     updated_at: new Date()
                 };
                 if (slug) updateDoc.slug = slug;
