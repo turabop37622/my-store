@@ -18,6 +18,7 @@ export async function placeOrder(data: {
     image_url?: string | null;
   }>;
 }) {
+  if (typeof window === "undefined") throw new Error("Client only");
   const res = await fetch(`${API_URL}/api/orders`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
