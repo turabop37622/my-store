@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, X, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, X, Loader2, ToggleLeft, ToggleRight } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
@@ -85,6 +85,22 @@ export default function Products() {
     } catch { toast.error("Failed to delete."); }
   };
 
+  const handleToggleActive = async (product: any) => {
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+      await axios.put(`${backendUrl}/api/admin/products/${product.id}`, {
+        name: product.name, price: product.price,
+        original_price: product.original_price || null,
+        category: product.category, tagline: product.tagline || "",
+        stock: product.stock, image_url: product.image_url,
+        details: product.details || [], images: product.images || [],
+        is_active: !product.is_active
+      });
+      toast.success(product.is_active ? "Product deactivated!" : "Product activated!");
+      fetchProducts();
+    } catch { toast.error("Failed to update status."); }
+  };
+
   if (loading) return <div className="p-10 text-slate-500">Loading Products...</div>;
 
   return (
@@ -133,13 +149,28 @@ export default function Products() {
                       product.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                     }`}>{product.status}</span>
                   </td>
-                  <td className="p-4 text-right space-x-2">
-                    <button onClick={() => openEdit(product)} className="p-2 text-slate-400 hover:text-blue-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Edit">
-                      <Edit size={16} />
-                    </button>
-                    <button onClick={() => handleDelete(product.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Delete">
-                      <Trash2 size={16} />
-                    </button>
+                  <td className="p-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleToggleActive(product)}
+                        title={product.is_active ? "Deactivate" : "Activate"}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm ${
+                          product.is_active
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                            : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {product.is_active
+                          ? <><ToggleRight size={16} /> Active</>
+                          : <><ToggleLeft size={16} /> Inactive</>}
+                      </button>
+                      <button onClick={() => openEdit(product)} className="p-2 text-slate-400 hover:text-blue-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Edit">
+                        <Edit size={16} />
+                      </button>
+                      <button onClick={() => handleDelete(product.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Remove">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

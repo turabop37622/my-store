@@ -1,17 +1,17 @@
 import { Link } from "@tanstack/react-router";
 import type { Product } from "@/lib/products.functions";
-import { getProductImage } from "@/lib/product-images";
 import { useCart } from "@/lib/cart-store";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, Star } from "lucide-react";
 
 export function ProductCard({ product }: { product: Product }) {
   const add = useCart((s) => s.add);
-  
+
   const price = Number(product?.price ?? 0);
   const originalPrice = Number(product?.original_price ?? 0);
   const slug = product?.slug ?? "";
   const name = product?.name ?? "Product";
+  const imageUrl = product?.image_url || (product?.images && product.images.length > 0 ? product.images[0] : null);
 
   const discount =
     originalPrice > price
@@ -40,12 +40,13 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         )}
         <img
-          src={getProductImage(product?.image_url)}
+          src={imageUrl || "/placeholder.svg"}
           alt={name}
           width={1024}
           height={1024}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
         />
         <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
         <button
@@ -113,7 +114,3 @@ export function ProductCard({ product }: { product: Product }) {
     </div>
   );
 }
-
-
-
-
