@@ -18,6 +18,8 @@ export function ProductCard({ product }: { product: Product }) {
       ? Math.round(((originalPrice - price) / originalPrice) * 100)
       : null;
 
+  const isOutOfStock = product?.stock === 0 || product?.is_active === false;
+
   return (
     <div className="group flex flex-col">
       <Link
@@ -25,9 +27,14 @@ export function ProductCard({ product }: { product: Product }) {
         params={{ slug: slug }}
         className="relative block aspect-square overflow-hidden rounded-2xl bg-secondary"
       >
-        {(product?.badge || discount) && (
+        {(product?.badge || discount || isOutOfStock) && (
           <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 items-start">
-            {discount && (
+            {isOutOfStock && (
+              <span className="bg-red-600 text-white text-[10px] font-black tracking-wider uppercase px-2.5 py-1 rounded-lg shadow-lg">
+                OUT OF STOCK
+              </span>
+            )}
+            {!isOutOfStock && discount && (
               <span className="bg-red-600 text-white text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-lg shadow-lg">
                 SAVE {discount}%
               </span>
@@ -49,24 +56,26 @@ export function ProductCard({ product }: { product: Product }) {
           onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
         />
         <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            add({
-              product_id: product?.id,
-              slug: slug,
-              name: name,
-              price: price,
-              image_url: product?.image_url,
-              category: product?.category,
-            });
-          }}
-          className="absolute bottom-3 right-3 h-10 w-10 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all shadow-xl active:scale-95"
-          aria-label={`Add ${name} to cart`}
-        >
-          <ShoppingBag className="h-4 w-4" />
-        </button>
+        {!isOutOfStock && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              add({
+                product_id: product?.id,
+                slug: slug,
+                name: name,
+                price: price,
+                image_url: product?.image_url,
+                category: product?.category,
+              });
+            }}
+            className="absolute bottom-3 right-3 h-10 w-10 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all shadow-xl active:scale-95"
+            aria-label={`Add ${name} to cart`}
+          >
+            <ShoppingBag className="h-4 w-4" />
+          </button>
+        )}
       </Link>
       <div className="mt-4 px-1">
         <div className="flex items-center justify-between gap-2">
@@ -96,6 +105,7 @@ export function ProductCard({ product }: { product: Product }) {
         <Button
           size="sm"
           variant="outline"
+          disabled={isOutOfStock}
           className="w-full mt-4 rounded-full text-xs font-bold h-10 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all shadow-sm"
           onClick={() =>
             add({
@@ -108,7 +118,7 @@ export function ProductCard({ product }: { product: Product }) {
             })
           }
         >
-          Add to Cart
+          {isOutOfStock ? "Out of Stock" : "Add to Cart"}
         </Button>
       </div>
     </div>

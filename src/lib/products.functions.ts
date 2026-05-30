@@ -15,6 +15,8 @@ export type Product = {
   rating: number | null;
   is_featured: boolean;
   images?: string[];
+  stock?: number;
+  is_active?: boolean;
 };
 
 export async function listProducts(): Promise<Product[]> {

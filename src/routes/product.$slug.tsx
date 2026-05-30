@@ -46,6 +46,8 @@ function ProductPage() {
 
   if (!product) return <div className="py-40 text-center">Product not found</div>;
 
+  const isOutOfStock = product.stock === 0 || product.is_active === false;
+
   const discount =
     product.original_price && product.original_price > product.price
       ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
@@ -71,7 +73,11 @@ function ProductPage() {
               className="aspect-square rounded-3xl overflow-hidden bg-secondary border border-border relative cursor-zoom-in group"
               onClick={() => setIsFullscreen(true)}
             >
-               {discount && (
+               {isOutOfStock ? (
+                  <span className="absolute top-4 right-4 z-10 bg-red-600 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1.5 rounded-full">
+                    OUT OF STOCK
+                  </span>
+               ) : discount && (
                   <span className="absolute top-4 right-4 z-10 bg-red-600 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1.5 rounded-full">
                     {discount}% OFF
                   </span>
@@ -154,15 +160,17 @@ function ProductPage() {
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Quantity</span>
                 <div className="flex items-center bg-white rounded-full p-1 border border-slate-200 shadow-sm">
                   <button
+                    disabled={isOutOfStock}
                     onClick={() => setQty(Math.max(1, qty - 1))}
-                    className="h-10 w-10 rounded-full flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-600"
+                    className="h-10 w-10 rounded-full flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-600 disabled:opacity-30 disabled:pointer-events-none"
                   >
                     <Minus className="h-4 w-4" />
                   </button>
-                  <span className="w-12 text-center font-semibold text-slate-900">{qty}</span>
+                  <span className="w-12 text-center font-semibold text-slate-900">{isOutOfStock ? 0 : qty}</span>
                   <button
+                    disabled={isOutOfStock}
                     onClick={() => setQty(qty + 1)}
-                    className="h-10 w-10 rounded-full flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-600"
+                    className="h-10 w-10 rounded-full flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-600 disabled:opacity-30 disabled:pointer-events-none"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -171,7 +179,8 @@ function ProductPage() {
 
               <Button
                 size="lg"
-                className="w-full h-14 rounded-full bg-[#00a859] hover:bg-[#00904a] text-white text-sm font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all"
+                disabled={isOutOfStock}
+                className="w-full h-14 rounded-full bg-[#00a859] hover:bg-[#00904a] text-white text-sm font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed"
                 onClick={() => {
                   add({
                     product_id: product.id,
@@ -184,7 +193,7 @@ function ProductPage() {
                   toast.success("Added to cart");
                 }}
               >
-                Add to Cart <ArrowRight className="ml-2 h-4 w-4" />
+                {isOutOfStock ? "Out of Stock" : <>Add to Cart <ArrowRight className="ml-2 h-4 w-4" /></>}
               </Button>
 
               <div className="grid grid-cols-3 gap-3 pt-4">

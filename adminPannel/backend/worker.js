@@ -233,7 +233,8 @@ export default {
                     image_url: p.image_url || '',
                     rating: p.rating || 4.5,
                     is_featured: p.is_featured || false,
-                    stock: p.stock || 100,
+                    stock: p.stock !== undefined ? Number(p.stock) : 100,
+                    is_active: p.is_active !== false,
                     details: p.details || [],
                     images: p.images || (p.image_url ? [p.image_url] : [])
                 })));
@@ -256,7 +257,8 @@ export default {
                     image_url: product.image_url || '',
                     rating: product.rating || 4.5,
                     is_featured: product.is_featured || false,
-                    stock: product.stock || 100,
+                    stock: product.stock !== undefined ? Number(product.stock) : 100,
+                    is_active: product.is_active !== false,
                     details: product.details || [],
                     images: product.images || (product.image_url ? [product.image_url] : [])
                 });
