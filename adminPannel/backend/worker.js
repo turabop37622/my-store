@@ -32,9 +32,9 @@ function formatOrder(order) {
 
 async function connectDB(env) {
   const client = new MongoClient(env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 5000,
-    connectTimeoutMS: 5000,
-    socketTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 30000,
   });
   await client.connect();
   return client.db(env.MONGODB_DB || 'breezygo');
@@ -243,7 +243,7 @@ async function sendPromoEmail(email, promoCode, expiresAt, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
@@ -375,11 +375,14 @@ export default {
           );
         }
 
-        await sendOrderEmail({
-          id: result.insertedId.toString(),
-          customer_name, phone, city, address,
-          items: trustedItems, total_amount
-        }, env);
+        // Fire-and-forget: email bhejo background mein — response block nahi hoga
+        ctx.waitUntil(
+          sendOrderEmail({
+            id: result.insertedId.toString(),
+            customer_name, phone, city, address,
+            items: trustedItems, total_amount
+          }, env)
+        );
 
         return jsonResponse({ success: true, id: result.insertedId.toString(), total_amount });
       }
@@ -477,7 +480,7 @@ export default {
           { _id: new ObjectId(id) },
           { $set: { status: 'approved', promo_code: promoCode, approved_at: new Date() } }
         );
-        await sendPromoEmail(subscriber.email, promoCode, expiresAt, env);
+        ctx.waitUntil(sendPromoEmail(subscriber.email, promoCode, expiresAt, env));
         return jsonResponse({ success: true });
       }
 
