@@ -45,8 +45,10 @@ function Checkout() {
   const baseSubtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const [discountCode, setDiscountCode] = useState("");
   const [discountApplied, setDiscountApplied] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [applyingCode, setApplyingCode] = useState(false);
 
-  const discountAmount = discountApplied ? Math.round(baseSubtotal * 0.1) : 0;
+  const discountAmount = discountApplied ? Math.round(baseSubtotal * (discountPercent / 100)) : 0;
   const subtotal = baseSubtotal - discountAmount;
 
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +72,39 @@ function Checkout() {
       </div>
     );
   }
+
+  const handleApplyCode = async () => {
+    const code = discountCode.trim().toUpperCase();
+    if (!code) return;
+    if (discountApplied) {
+      setDiscountApplied(false);
+      setDiscountCode("");
+      setDiscountPercent(0);
+      toast.info("Discount removed");
+      return;
+    }
+    setApplyingCode(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL;
+      const res = await fetch(`${API_URL}/api/promo/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Invalid promo code");
+        return;
+      }
+      setDiscountPercent(data.discount_percent);
+      setDiscountApplied(true);
+      toast.success(`${data.discount_percent}% discount applied! 🎉`);
+    } catch {
+      toast.error("Could not validate code. Try again.");
+    } finally {
+      setApplyingCode(false);
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,9 +235,7 @@ function Checkout() {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-
                       <div className="text-sm text-slate-500 mb-3">Rs {i.price.toLocaleString()}</div>
-
                       <div className="flex justify-between items-center">
                         <div className="flex items-center bg-white rounded-full p-0.5 border border-slate-200 shadow-sm w-fit">
                           <button type="button" onClick={() => setQty(i.product_id, i.quantity - 1)} className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600">
@@ -227,35 +260,21 @@ function Checkout() {
                     className="h-12 rounded-xl border-slate-200 bg-slate-50 focus-visible:ring-emerald-500"
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
-                    disabled={discountApplied}
+                    disabled={discountApplied || applyingCode}
                   />
                   <Button
                     type="button"
                     variant={discountApplied || discountCode.trim().length === 0 ? "outline" : "default"}
+                    disabled={applyingCode}
                     className={`h-12 px-6 rounded-xl font-bold transition-all ${discountApplied
-                        ? "border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-red-500"
-                        : discountCode.trim().length === 0
-                          ? "border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 bg-transparent"
-                          : "bg-slate-900 text-white hover:bg-slate-800"
+                      ? "border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-red-500"
+                      : discountCode.trim().length === 0
+                        ? "border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 bg-transparent"
+                        : "bg-slate-900 text-white hover:bg-slate-800"
                       }`}
-                    onClick={() => {
-                      if (discountApplied) {
-                        setDiscountApplied(false);
-                        setDiscountCode("");
-                        toast.info("Discount removed");
-                      } else {
-                        const code = discountCode.trim().toUpperCase();
-                        const validCodes = ["BREEZY10", "WELCOME10", "BREEZY20"];
-                        if (validCodes.includes(code)) {
-                          setDiscountApplied(true);
-                          toast.success("Discount code applied! 🎉");
-                        } else {
-                          toast.error("Invalid discount code. Try BREEZY10 or WELCOME10");
-                        }
-                      }
-                    }}
+                    onClick={handleApplyCode}
                   >
-                    {discountApplied ? "Remove" : "Apply"}
+                    {applyingCode ? <Loader2 className="animate-spin h-4 w-4" /> : discountApplied ? "Remove" : "Apply"}
                   </Button>
                 </div>
               </div>
@@ -267,7 +286,7 @@ function Checkout() {
                 </div>
                 {discountApplied && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Discount applied</span>
+                    <span className="text-slate-500">Discount ({discountPercent}%)</span>
                     <span className="text-red-500 font-medium">- Rs {discountAmount.toLocaleString()}</span>
                   </div>
                 )}

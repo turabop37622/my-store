@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from "react-router-dom"
-import { LayoutDashboard, ShoppingCart, Package, MessageSquare, LogOut, Menu, X } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Package, MessageSquare, LogOut, Menu, X, Users } from "lucide-react"
 import { Toaster } from "sonner"
 import { useState, useEffect } from "react"
 import Dashboard from "./pages/Dashboard";
@@ -7,6 +7,7 @@ import Orders from "./pages/Orders";
 import Products from "./pages/Products";
 import Messages from "./pages/Messages";
 import Login from "./pages/Login";
+import Subscribers from "./pages/Subscribers";
 
 function isLoggedIn() {
   return !!localStorage.getItem("admin_token");
@@ -25,6 +26,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     { label: "Orders", icon: ShoppingCart, to: "/orders" },
     { label: "Products", icon: Package, to: "/products" },
     { label: "Messages", icon: MessageSquare, to: "/messages" },
+    { label: "Subscribers", icon: Users, to: "/subscribers" },
   ];
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
@@ -37,7 +39,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex bg-slate-50">
       <Toaster richColors position="top-right" />
-      
+
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-slate-900 text-white fixed inset-y-0 left-0 z-50 hidden lg:flex flex-col">
         <div className="p-6 border-b border-slate-800">
@@ -114,6 +116,7 @@ export default function App() {
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/messages" element={<Messages />} />
+                <Route path="/subscribers" element={<Subscribers />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

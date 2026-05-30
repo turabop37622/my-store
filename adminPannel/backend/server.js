@@ -205,6 +205,59 @@ async function sendReviewEmail(order) {
   }
 }
 
+async function sendPromoEmail(email, promoCode, expiresAt) {
+  try {
+    await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": process.env.BREVO_API_KEY
+      },
+      body: JSON.stringify({
+        sender: { name: "BreezyGo Store", email: "turabop37622@gmail.com" },
+        to: [{ email }],
+        subject: `🎉 Your 20% OFF Promo Code is Here!`,
+        htmlContent: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#10b981,#059669);padding:40px;text-align:center;">
+            <h1 style="margin:0;color:#fff;font-size:28px;font-weight:800;">BreezyGo</h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Premium Lifestyle Tech</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px;text-align:center;">
+            <div style="font-size:56px;margin-bottom:16px;">🎉</div>
+            <h2 style="margin:0 0 12px;color:#111827;font-size:24px;font-weight:800;">Welcome to the Club!</h2>
+            <p style="color:#6b7280;font-size:15px;margin-bottom:32px;">Here's your exclusive 20% OFF promo code:</p>
+            <div style="background:#f0fdf4;border:2px dashed #10b981;border-radius:12px;padding:24px;margin-bottom:24px;">
+              <p style="margin:0;font-size:32px;font-weight:900;color:#059669;letter-spacing:4px;font-family:monospace;">${promoCode}</p>
+            </div>
+            <p style="color:#6b7280;font-size:13px;">Valid for <strong>24 hours</strong> only — expires ${new Date(expiresAt).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
+            <p style="color:#ef4444;font-size:13px;font-weight:600;">Single use only — expires after first use</p>
+            <a href="https://breezygo.com/shop" style="display:inline-block;margin-top:24px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:16px;">Shop Now</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f9fafb;padding:24px;text-align:center;border-top:1px solid #e5e7eb;">
+            <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} BreezyGo Pakistan</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+      })
+    });
+  } catch (err) { console.error("Promo email error:", err); }
+}
+
 // ─── AUTH ──────────────────────────────────────────
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
@@ -305,14 +358,16 @@ app.post('/api/orders', async (req, res) => {
       };
     });
 
-    const VALID_CODES = { "BREEZY10": 0.10, "WELCOME10": 0.10, "BREEZY20": 0.20 };
     const subtotal = trustedItems.reduce((s, i) => s + i.line_total, 0);
     let discount_amount = 0;
     let verified_code = null;
     if (discount_code) {
       const code = discount_code.toUpperCase().trim();
-      const rate = VALID_CODES[code];
-      if (rate) { discount_amount = Math.round(subtotal * rate); verified_code = code; }
+      const promo = await database.collection("promo_codes").findOne({ code });
+      if (promo && !promo.used && new Date() < new Date(promo.expires_at)) {
+        discount_amount = Math.round(subtotal * (promo.discount_percent / 100));
+        verified_code = code;
+      }
     }
 
     const total_amount = subtotal - discount_amount;
@@ -323,6 +378,13 @@ app.post('/api/orders', async (req, res) => {
       items: trustedItems, subtotal, shipping_fee: 0,
       total_amount, status: 'pending', created_at: new Date()
     });
+
+    if (verified_code) {
+      await database.collection("promo_codes").updateOne(
+        { code: verified_code },
+        { $set: { used: true, used_at: new Date() } }
+      );
+    }
 
     await sendOrderEmail({
       id: result.insertedId.toString(),
@@ -341,14 +403,12 @@ app.get('/api/orders/track/:query', async (req, res) => {
     const database = await connectDB();
     const query = req.params.query.trim();
 
-    // 24-char MongoDB ID - sirf woh specific order
     if (query.length === 24 && ObjectId.isValid(query)) {
       const order = await database.collection("orders").findOne({ _id: new ObjectId(query) });
       if (!order) return res.status(404).json({ error: 'Order not found' });
       return res.json({ type: 'single', orders: [formatOrder(order)] });
     }
 
-    // 8-char short ID - sirf woh specific order
     if (query.length === 8) {
       const all = await database.collection("orders")
         .find({}).sort({ created_at: -1 }).limit(500).toArray();
@@ -357,11 +417,9 @@ app.get('/api/orders/track/:query', async (req, res) => {
       return res.json({ type: 'single', orders: [formatOrder(order)] });
     }
 
-    // Phone number - saare orders
     let orders = await database.collection("orders")
       .find({ phone: query }).sort({ created_at: -1 }).toArray();
 
-    // Email - saare orders
     if (orders.length === 0) {
       orders = await database.collection("orders")
         .find({ email: query.toLowerCase() }).sort({ created_at: -1 }).toArray();
@@ -370,6 +428,95 @@ app.get('/api/orders/track/:query', async (req, res) => {
     if (orders.length === 0) return res.status(404).json({ error: 'No orders found' });
     return res.json({ type: 'multiple', orders: orders.map(formatOrder) });
 
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC SUBSCRIBE ─────────────────────────────
+app.post('/api/subscribe', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { email } = req.body;
+    if (!email || !email.includes('@')) return res.status(400).json({ error: 'Valid email required' });
+    const existing = await database.collection("subscribers").findOne({ email: email.toLowerCase() });
+    if (existing) return res.status(409).json({ error: 'Already subscribed' });
+    await database.collection("subscribers").insertOne({
+      email: email.toLowerCase(),
+      status: 'pending',
+      created_at: new Date()
+    });
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── VALIDATE PROMO CODE ──────────────────────────
+app.post('/api/promo/validate', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Code required' });
+    const promo = await database.collection("promo_codes").findOne({ code: code.toUpperCase().trim() });
+    if (!promo) return res.status(404).json({ error: 'Invalid promo code' });
+    if (promo.used) return res.status(400).json({ error: 'Promo code already used' });
+    if (new Date() > new Date(promo.expires_at)) return res.status(400).json({ error: 'Promo code expired' });
+    res.json({ valid: true, discount_percent: promo.discount_percent });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── ADMIN GET SUBSCRIBERS ────────────────────────
+app.get('/api/admin/subscribers', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const subscribers = await database.collection("subscribers").find().sort({ created_at: -1 }).toArray();
+    res.json(subscribers.map(s => ({
+      id: s._id.toString(),
+      email: s.email,
+      status: s.status,
+      promo_code: s.promo_code || null,
+      date: new Date(s.created_at).toLocaleString()
+    })));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── ADMIN APPROVE SUBSCRIBER ─────────────────────
+app.post('/api/admin/subscribers/approve', async (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id || !ObjectId.isValid(id)) return res.status(400).json({ error: 'Invalid ID' });
+    const database = await connectDB();
+    const subscriber = await database.collection("subscribers").findOne({ _id: new ObjectId(id) });
+    if (!subscriber) return res.status(404).json({ error: 'Subscriber not found' });
+    if (subscriber.status === 'approved') return res.status(400).json({ error: 'Already approved' });
+    const promoCode = 'BREEZY-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await database.collection("promo_codes").insertOne({
+      code: promoCode,
+      email: subscriber.email,
+      discount_percent: 20,
+      used: false,
+      expires_at: expiresAt,
+      created_at: new Date()
+    });
+    await database.collection("subscribers").updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: 'approved', promo_code: promoCode, approved_at: new Date() } }
+    );
+    await sendPromoEmail(subscriber.email, promoCode, expiresAt);
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC CONTACT ────────────────────────────────
+app.post('/api/contact', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { name, email, subject, message } = req.body;
+    const result = await database.collection("contact_messages").insertOne({
+      name, email, subject, message,
+      status: 'unread',
+      created_at: new Date()
+    });
+    if (!result.acknowledged) throw new Error("Could not submit message.");
+    res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -544,21 +691,6 @@ app.delete('/api/admin/products/:id', async (req, res) => {
     }
     const database = await connectDB();
     await database.collection("products").deleteOne({ _id: new ObjectId(req.params.id) });
-    res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-// ─── PUBLIC CONTACT ────────────────────────────────
-app.post('/api/contact', async (req, res) => {
-  try {
-    const database = await connectDB();
-    const { name, email, subject, message } = req.body;
-    const result = await database.collection("contact_messages").insertOne({
-      name, email, subject, message,
-      status: 'unread',
-      created_at: new Date()
-    });
-    if (!result.acknowledged) throw new Error("Could not submit message.");
     res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });

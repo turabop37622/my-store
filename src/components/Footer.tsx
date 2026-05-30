@@ -2,13 +2,43 @@ import { Link } from "@tanstack/react-router";
 import { Instagram, Facebook, Truck, ShieldCheck, Headphones, Zap, Mail, ArrowRight, Twitter, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
 export function Footer() {
+  const [email, setEmail] = useState("");
+  const [subStatus, setSubStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.includes("@")) return;
+    setSubStatus("loading");
+    setErrorMsg("");
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.error || "Something went wrong.");
+        setSubStatus("error");
+      } else {
+        setSubStatus("done");
+        setEmail("");
+      }
+    } catch {
+      setErrorMsg("Could not connect. Try again.");
+      setSubStatus("error");
+    }
+  };
+
   return (
     <footer className="bg-[#0a0a0a] text-white pt-24 pb-12 mt-20 relative overflow-hidden">
       {/* Decorative background element */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-      
+
       <div className="mx-auto max-w-[1600px] px-4 md:px-10">
         {/* Top Section: Newsletter & Brand */}
         <div className="grid lg:grid-cols-12 gap-16 pb-20 border-b border-white/5">
@@ -48,20 +78,45 @@ export function Footer() {
                   Join the Club
                 </div>
                 <h3 className="text-2xl md:text-4xl font-black uppercase tracking-tighter">
-                  Unlock 10% OFF <br /> On Your First Order
+                  Unlock 20% OFF <br /> On Your First Order
                 </h3>
                 <p className="text-white/40 text-sm font-medium">
                   Be the first to know about new drops, exclusive sales, and tech news.
                 </p>
-                <form className="flex flex-col sm:flex-row gap-3 max-w-md" onSubmit={(e) => e.preventDefault()}>
-                  <Input 
-                    placeholder="Enter your email" 
-                    className="h-14 rounded-2xl bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 transition-all"
-                  />
-                  <Button className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20">
-                    Subscribe <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </form>
+
+                {subStatus === "done" ? (
+                  <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-6 py-4 max-w-md">
+                    <span className="text-emerald-400 text-xl">✓</span>
+                    <div>
+                      <p className="text-emerald-400 font-bold text-sm">You're on the list!</p>
+                      <p className="text-white/40 text-xs mt-0.5">Admin will review and send your promo code soon.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <form className="flex flex-col sm:flex-row gap-3 max-w-md" onSubmit={handleSubscribe}>
+                      <Input
+                        type="email"
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={subStatus === "loading"}
+                        required
+                        className="h-14 rounded-2xl bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 transition-all"
+                      />
+                      <Button
+                        type="submit"
+                        disabled={subStatus === "loading"}
+                        className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20"
+                      >
+                        {subStatus === "loading" ? "..." : <>Subscribe <ArrowRight className="ml-2 h-4 w-4" /></>}
+                      </Button>
+                    </form>
+                    {subStatus === "error" && (
+                      <p className="text-red-400 text-sm -mt-2">{errorMsg}</p>
+                    )}
+                  </>
+                )}
               </div>
               {/* Decorative circle */}
               <div className="absolute -bottom-10 -right-10 h-64 w-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
@@ -76,8 +131,8 @@ export function Footer() {
             <ul className="space-y-4">
               {["Earbuds", "Smart Watches", "Headphones", "Speakers", "Accessories"].map((link) => (
                 <li key={link}>
-                  <Link 
-                    to="/shop" 
+                  <Link
+                    to="/shop"
                     search={{ category: link }}
                     className="text-white/60 hover:text-primary hover:translate-x-1 transition-all inline-block font-medium"
                   >
@@ -100,8 +155,8 @@ export function Footer() {
                 { label: "About Us", to: "/about" },
               ].map((link) => (
                 <li key={link.label}>
-                  <Link 
-                    to={link.to} 
+                  <Link
+                    to={link.to}
                     className="text-white/60 hover:text-primary hover:translate-x-1 transition-all inline-block font-medium"
                   >
                     {link.label}
@@ -120,13 +175,13 @@ export function Footer() {
                 { icon: Zap, title: "Fast COD", sub: "Pay when you receive" },
               ].map((perk) => (
                 <div key={perk.title} className="flex items-center gap-4 group">
-                   <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                      <perk.icon className="h-5 w-5" />
-                   </div>
-                   <div>
-                      <div className="text-xs font-bold uppercase text-white tracking-widest">{perk.title}</div>
-                      <div className="text-[10px] text-white/40 mt-0.5">{perk.sub}</div>
-                   </div>
+                  <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                    <perk.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold uppercase text-white tracking-widest">{perk.title}</div>
+                    <div className="text-[10px] text-white/40 mt-0.5">{perk.sub}</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -142,7 +197,7 @@ export function Footer() {
               <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-white/5 border border-white/10">
             <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Made in Pakistan</span>
             <div className="h-3 w-[1px] bg-white/10" />
