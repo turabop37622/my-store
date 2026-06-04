@@ -112,13 +112,17 @@ function Checkout() {
       toast.error("Please select a city.");
       return;
     }
+    if (!form.email.trim()) {
+      toast.error("Please enter your email address.");
+      return;
+    }
     if (submitting) return;
     setSubmitting(true);
     try {
       const res = await placeOrder({
         customer_name: form.customer_name.trim(),
         phone: form.phone.trim(),
-        email: form.email.trim() || null,
+        email: form.email.trim(),
         address: form.address.trim(),
         city: form.city.trim(),
         postal_code: form.postal_code.trim() || null,
@@ -146,39 +150,144 @@ function Checkout() {
     }
   };
 
+  // Order Summary block - reused on both mobile (top) and desktop (sidebar)
+  const OrderSummary = () => (
+    <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 sm:p-8 shadow-sm">
+      <h2 className="text-lg font-bold text-slate-800 mb-6">Order Summary</h2>
+
+      <div className="space-y-4 mb-6 pb-6 border-b border-slate-100">
+        {items.map(i => (
+          <div key={i.product_id} className="flex gap-3 items-start">
+            <div className="h-14 w-14 rounded-xl bg-slate-50 overflow-hidden border border-slate-100 shrink-0">
+              <img src={getProductImage(i.image_url)} alt={i.name} className="h-full w-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col py-0.5">
+              <div className="flex justify-between items-start gap-2 mb-0.5">
+                <div className="text-sm font-bold text-slate-800 line-clamp-1">{i.name}</div>
+                <button type="button" onClick={() => remove(i.product_id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="text-sm text-slate-500 mb-2">Rs {i.price.toLocaleString()}</div>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center bg-white rounded-full p-0.5 border border-slate-200 shadow-sm w-fit">
+                  <button type="button" onClick={() => setQty(i.product_id, i.quantity - 1)} className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600">
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="w-6 text-center text-xs font-medium text-slate-700">{i.quantity}</span>
+                  <button type="button" onClick={() => setQty(i.product_id, i.quantity + 1)} className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600">
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="text-sm font-bold text-slate-900">Rs {(i.price * i.quantity).toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Discount Code */}
+      <div className="mb-5">
+        <div className="flex gap-2">
+          <Input
+            placeholder="Discount code"
+            className="h-11 rounded-xl border-slate-200 bg-slate-50 focus-visible:ring-emerald-500"
+            value={discountCode}
+            onChange={(e) => setDiscountCode(e.target.value)}
+            disabled={discountApplied || applyingCode}
+          />
+          <Button
+            type="button"
+            variant={discountApplied || discountCode.trim().length === 0 ? "outline" : "default"}
+            disabled={applyingCode}
+            className={`h-11 px-5 rounded-xl font-bold transition-all ${discountApplied
+              ? "border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-red-500"
+              : discountCode.trim().length === 0
+                ? "border-slate-200 text-slate-400 bg-transparent"
+                : "bg-slate-900 text-white hover:bg-slate-800"
+              }`}
+            onClick={handleApplyCode}
+          >
+            {applyingCode ? <Loader2 className="animate-spin h-4 w-4" /> : discountApplied ? "Remove" : "Apply"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Price Breakdown */}
+      <div className="space-y-3">
+        <div className="flex justify-between text-sm">
+          <span className="text-slate-500">Subtotal</span>
+          <span className="text-slate-500">Rs {baseSubtotal.toLocaleString()}</span>
+        </div>
+        {discountApplied && (
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Discount ({discountPercent}%)</span>
+            <span className="text-red-500 font-medium">- Rs {discountAmount.toLocaleString()}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-sm">
+          <span className="text-slate-500">Shipping</span>
+          <span className="text-emerald-500 font-medium">Free</span>
+        </div>
+        <div className="pt-4 mt-2 border-t border-slate-100 flex justify-between items-center">
+          <span className="text-xl font-bold text-slate-900">Total</span>
+          <span className="text-xl font-bold text-slate-900">Rs {subtotal.toLocaleString()}</span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <main className="min-h-screen bg-[#fcfcfc] pt-32 md:pt-40 pb-24">
+    <main className="min-h-screen bg-[#fcfcfc] pt-28 md:pt-40 pb-24">
       <Toaster richColors position="top-center" />
       <div className="mx-auto max-w-[1200px] px-4 md:px-10">
-        <div className="mb-10">
+        <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Checkout</h1>
           <p className="text-slate-500 text-sm mt-1">Enter your details — payment on delivery.</p>
         </div>
 
-        <form onSubmit={onSubmit} className="grid lg:grid-cols-12 gap-10 items-start">
-          <div className="lg:col-span-7 space-y-6">
-            <div className="grid sm:grid-cols-2 gap-6">
+        <form onSubmit={onSubmit} className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-10 items-start">
+
+          {/* ORDER SUMMARY — shown ABOVE form on mobile, hidden on desktop */}
+          <div className="lg:hidden w-full">
+            <OrderSummary />
+          </div>
+
+          {/* LEFT SIDE - Form */}
+          <div className="lg:col-span-7 space-y-5 w-full">
+            <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700">Full Name</Label>
                 <Input required className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.customer_name} onChange={e => setForm({ ...form, customer_name: e.target.value })} placeholder="Enter your name" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700">Phone Number</Label>
-                <Input required className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Enter your phone number" />
+                <Input required className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="03XX-XXXXXXX" />
               </div>
             </div>
 
+            {/* Email - NOW REQUIRED */}
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700">Email (optional)</Label>
-              <Input type="email" className="h-12 rounded-xl border-slate-200 bg-white shadow-sm" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Enter your email" />
+              <Label className="text-sm font-semibold text-slate-700">
+                Email Address <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                required
+                type="email"
+                className="h-12 rounded-xl border-slate-200 bg-white shadow-sm"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                placeholder="yourname@email.com"
+              />
+              <p className="text-xs text-slate-400">Order confirmation will be sent to this email.</p>
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700">Complete Address</Label>
-              <Textarea required className="min-h-[100px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="House #, Street, Area" />
+              <Textarea required className="min-h-[90px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="House #, Street, Area" />
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-6">
+            <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700">City</Label>
                 <Select required value={form.city} onValueChange={(val) => setForm({ ...form, city: val })}>
@@ -200,11 +309,11 @@ function Checkout() {
 
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700">Notes (optional)</Label>
-              <Textarea className="min-h-[80px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Landmark or delivery instructions" />
+              <Textarea className="min-h-[70px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Landmark or delivery instructions" />
             </div>
 
-            <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
                 <Banknote className="h-5 w-5" />
               </div>
               <div>
@@ -218,87 +327,10 @@ function Checkout() {
             </Button>
           </div>
 
-          <aside className="lg:col-span-5">
-            <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm sticky top-32">
-              <h2 className="text-lg font-bold text-slate-800 mb-8">Order Summary</h2>
-
-              <div className="space-y-6 mb-8 pb-8 border-b border-slate-100">
-                {items.map(i => (
-                  <div key={i.product_id} className="flex gap-4 items-start">
-                    <div className="h-16 w-16 rounded-xl bg-slate-50 overflow-hidden border border-slate-100 shrink-0">
-                      <img src={getProductImage(i.image_url)} alt={i.name} className="h-full w-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col py-0.5">
-                      <div className="flex justify-between items-start gap-2 mb-0.5">
-                        <div className="text-sm font-bold text-slate-800 line-clamp-1">{i.name}</div>
-                        <button type="button" onClick={() => remove(i.product_id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="text-sm text-slate-500 mb-3">Rs {i.price.toLocaleString()}</div>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center bg-white rounded-full p-0.5 border border-slate-200 shadow-sm w-fit">
-                          <button type="button" onClick={() => setQty(i.product_id, i.quantity - 1)} className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600">
-                            <Minus className="h-3 w-3" />
-                          </button>
-                          <span className="w-6 text-center text-xs font-medium text-slate-700">{i.quantity}</span>
-                          <button type="button" onClick={() => setQty(i.product_id, i.quantity + 1)} className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600">
-                            <Plus className="h-3 w-3" />
-                          </button>
-                        </div>
-                        <div className="text-sm font-bold text-slate-900">Rs {(i.price * i.quantity).toLocaleString()}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Discount code"
-                    className="h-12 rounded-xl border-slate-200 bg-slate-50 focus-visible:ring-emerald-500"
-                    value={discountCode}
-                    onChange={(e) => setDiscountCode(e.target.value)}
-                    disabled={discountApplied || applyingCode}
-                  />
-                  <Button
-                    type="button"
-                    variant={discountApplied || discountCode.trim().length === 0 ? "outline" : "default"}
-                    disabled={applyingCode}
-                    className={`h-12 px-6 rounded-xl font-bold transition-all ${discountApplied
-                      ? "border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-red-500"
-                      : discountCode.trim().length === 0
-                        ? "border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 bg-transparent"
-                        : "bg-slate-900 text-white hover:bg-slate-800"
-                      }`}
-                    onClick={handleApplyCode}
-                  >
-                    {applyingCode ? <Loader2 className="animate-spin h-4 w-4" /> : discountApplied ? "Remove" : "Apply"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Subtotal</span>
-                  <span className="text-slate-500">Rs {baseSubtotal.toLocaleString()}</span>
-                </div>
-                {discountApplied && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Discount ({discountPercent}%)</span>
-                    <span className="text-red-500 font-medium">- Rs {discountAmount.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Shipping</span>
-                  <span className="text-emerald-500 font-medium">Free</span>
-                </div>
-                <div className="pt-6 mt-6 border-t border-slate-100 flex justify-between items-center">
-                  <span className="text-xl font-bold text-slate-900">Total</span>
-                  <span className="text-xl font-bold text-slate-900">Rs {subtotal.toLocaleString()}</span>
-                </div>
-              </div>
+          {/* RIGHT SIDE - Order Summary, only on desktop */}
+          <aside className="hidden lg:block lg:col-span-5">
+            <div className="sticky top-32">
+              <OrderSummary />
             </div>
           </aside>
         </form>

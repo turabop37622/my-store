@@ -30,21 +30,7 @@ function formatOrder(order) {
   };
 }
 
-let cachedDb = null;
-let cachedClient = null;
 
-async function connectDB(env) {
-  if (cachedDb) return cachedDb;
-  const client = new MongoClient(env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 10000,
-    connectTimeoutMS: 10000,
-    socketTimeoutMS: 30000,
-  });
-  await client.connect();
-  cachedClient = client;
-  cachedDb = client.db(env.MONGODB_DB || 'breezygo');
-  return cachedDb;
-}
 
 async function sendOrderEmail(order, env) {
   try {
@@ -386,6 +372,18 @@ async function sendPromoEmail(email, promoCode, expiresAt, env) {
 
 export default {
   async fetch(request, env, ctx) {
+    let mongoClient = null;
+
+    async function getDB() {
+      if (!mongoClient) {
+        mongoClient = new MongoClient(env.MONGODB_URI, {
+          serverSelectionTimeoutMS: 5000,
+          connectTimeoutMS: 5000,
+        });
+        await mongoClient.connect();
+      }
+      return mongoClient.db(env.MONGODB_DB || 'breezygo');
+    }
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
@@ -414,57 +412,75 @@ export default {
 
       // ─── PUBLIC PRODUCTS ─────────────────────────
       if (path === '/api/products' && method === 'GET') {
-        const db = await connectDB(env);
-        const category = url.searchParams.get('category');
-        const featured = url.searchParams.get('featured');
-        const filter = { is_active: { $ne: false } };
-        if (category) filter.category = category;
-        if (featured === 'true') filter.is_featured = true;
-        const products = await db.collection("products").find(filter).project({ details: 0 }).toArray();
-        return jsonResponse(products.map(p => ({
-          id: p._id.toString(),
-          name: p.name,
-          slug: p.slug,
-          price: p.price,
-          original_price: p.original_price || null,
-          category: p.category,
-          tagline: p.tagline || '',
-          image_url: p.image_url || '',
-          rating: p.rating || 4.5,
-          is_featured: p.is_featured || false,
-          stock: p.stock !== undefined ? Number(p.stock) : 100,
-          is_active: p.is_active !== false,
-          images: p.images || (p.image_url ? [p.image_url] : [])
-        })), 200, { 'Cache-Control': 'public, max-age=300' });
+        const cacheKey = new Request(url.toString(), request);
+        const cache = caches.default;
+        let response = await cache.match(cacheKey);
+        
+        if (!response) {
+          const db = await getDB();
+          const category = url.searchParams.get('category');
+          const featured = url.searchParams.get('featured');
+          const filter = { is_active: { $ne: false } };
+          if (category) filter.category = category;
+          if (featured === 'true') filter.is_featured = true;
+          const products = await db.collection("products").find(filter).project({ details: 0 }).toArray();
+          response = jsonResponse(products.map(p => ({
+            id: p._id.toString(),
+            name: p.name,
+            slug: p.slug,
+            price: p.price,
+            original_price: p.original_price || null,
+            category: p.category,
+            tagline: p.tagline || '',
+            image_url: p.image_url || '',
+            rating: p.rating || 4.5,
+            is_featured: p.is_featured || false,
+            stock: p.stock !== undefined ? Number(p.stock) : 100,
+            is_active: p.is_active !== false,
+            images: p.images || (p.image_url ? [p.image_url] : [])
+          })), 200, { 'Cache-Control': 'public, max-age=60, s-maxage=60' });
+          
+          ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        }
+        return response;
       }
 
       // ─── PUBLIC SINGLE PRODUCT ───────────────────
       if (path.startsWith('/api/products/') && method === 'GET') {
-        const slug = path.replace('/api/products/', '');
-        const db = await connectDB(env);
-        const product = await db.collection("products").findOne({ slug });
-        if (!product) return jsonResponse({ error: "Product not found" }, 404);
-        return jsonResponse({
-          id: product._id.toString(),
-          name: product.name,
-          slug: product.slug,
-          price: product.price,
-          original_price: product.original_price || null,
-          category: product.category,
-          tagline: product.tagline || '',
-          image_url: product.image_url || '',
-          rating: product.rating || 4.5,
-          is_featured: product.is_featured || false,
-          stock: product.stock !== undefined ? Number(product.stock) : 100,
-          is_active: product.is_active !== false,
-          details: product.details || [],
-          images: product.images || (product.image_url ? [product.image_url] : [])
-        });
+        const cacheKey = new Request(url.toString(), request);
+        const cache = caches.default;
+        let response = await cache.match(cacheKey);
+        
+        if (!response) {
+          const slug = path.replace('/api/products/', '');
+          const db = await getDB();
+          const product = await db.collection("products").findOne({ slug });
+          if (!product) return jsonResponse({ error: "Product not found" }, 404);
+          response = jsonResponse({
+            id: product._id.toString(),
+            name: product.name,
+            slug: product.slug,
+            price: product.price,
+            original_price: product.original_price || null,
+            category: product.category,
+            tagline: product.tagline || '',
+            image_url: product.image_url || '',
+            rating: product.rating || 4.5,
+            is_featured: product.is_featured || false,
+            stock: product.stock !== undefined ? Number(product.stock) : 100,
+            is_active: product.is_active !== false,
+            details: product.details || [],
+            images: product.images || (product.image_url ? [product.image_url] : [])
+          }, 200, { 'Cache-Control': 'public, max-age=60, s-maxage=60' });
+          
+          ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        }
+        return response;
       }
 
       // ─── PUBLIC ORDER SUBMIT ──────────────────────
       if (path === '/api/orders' && method === 'POST') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const body = await request.json();
         const { customer_name, phone, email, city, address, postal_code, notes, discount_code, items } = body;
 
@@ -544,7 +560,7 @@ export default {
       // ─── PUBLIC ORDER TRACK ───────────────────────
       if (path.startsWith('/api/orders/track/') && method === 'GET') {
         const query = decodeURIComponent(path.replace('/api/orders/track/', '')).trim();
-        const db = await connectDB(env);
+        const db = await getDB();
 
         if (query.length === 24 && ObjectId.isValid(query)) {
           const order = await db.collection("orders").findOne({ _id: new ObjectId(query) });
@@ -574,7 +590,7 @@ export default {
 
       // ─── PUBLIC SUBSCRIBE ─────────────────────────
       if (path === '/api/subscribe' && method === 'POST') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const { email } = await request.json();
         if (!email || !email.includes('@')) return jsonResponse({ error: 'Valid email required' }, 400);
         const existing = await db.collection("subscribers").findOne({ email: email.toLowerCase() });
@@ -589,7 +605,7 @@ export default {
 
       // ─── VALIDATE PROMO CODE ──────────────────────
       if (path === '/api/promo/validate' && method === 'POST') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const { code } = await request.json();
         if (!code) return jsonResponse({ error: 'Code required' }, 400);
         const promo = await db.collection("promo_codes").findOne({ code: code.toUpperCase().trim() });
@@ -601,7 +617,7 @@ export default {
 
       // ─── ADMIN GET SUBSCRIBERS ────────────────────
       if (path === '/api/admin/subscribers' && method === 'GET') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const subscribers = await db.collection("subscribers").find().sort({ created_at: -1 }).toArray();
         return jsonResponse(subscribers.map(s => ({
           id: s._id.toString(),
@@ -616,7 +632,7 @@ export default {
       if (path === '/api/admin/subscribers/approve' && method === 'POST') {
         const { id } = await request.json();
         if (!id || !ObjectId.isValid(id)) return jsonResponse({ error: 'Invalid ID' }, 400);
-        const db = await connectDB(env);
+        const db = await getDB();
         const subscriber = await db.collection("subscribers").findOne({ _id: new ObjectId(id) });
         if (!subscriber) return jsonResponse({ error: 'Subscriber not found' }, 404);
         if (subscriber.status === 'approved') return jsonResponse({ error: 'Already approved' }, 400);
@@ -640,7 +656,7 @@ export default {
 
       // ─── ADMIN STATS ──────────────────────────────
       if (path === '/api/admin/stats' && method === 'GET') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
         const [totalOrders, totalProducts, totalMessages, revenueData, todayOrders, todayRevenue] = await Promise.all([
           db.collection("orders").countDocuments(),
@@ -668,7 +684,7 @@ export default {
 
       // ─── ADMIN ORDERS GET ─────────────────────────
       if (path === '/api/admin/orders' && method === 'GET') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const orders = await db.collection("orders").find().sort({ created_at: -1 }).toArray();
         return jsonResponse(orders.map(o => ({
           id: o._id.toString(),
@@ -688,7 +704,7 @@ export default {
 
       // ─── ADMIN ORDERS UPDATE ──────────────────────
       if (path === '/api/admin/orders' && method === 'POST') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const { id, status } = await request.json();
         if (!id || !ObjectId.isValid(id)) return jsonResponse({ error: "Invalid order ID" }, 400);
         await db.collection("orders").updateOne(
@@ -706,7 +722,7 @@ export default {
 
       // ─── ADMIN ORDERS DELETE ALL ──────────────────
       if (path === '/api/admin/orders' && method === 'DELETE') {
-        const db = await connectDB(env);
+        const db = await getDB();
         await db.collection("orders").deleteMany({});
         return jsonResponse({ success: true });
       }
@@ -715,14 +731,14 @@ export default {
       if (path.startsWith('/api/admin/orders/') && method === 'DELETE') {
         const id = path.replace('/api/admin/orders/', '');
         if (!ObjectId.isValid(id)) return jsonResponse({ error: "Invalid order ID" }, 400);
-        const db = await connectDB(env);
+        const db = await getDB();
         await db.collection("orders").deleteOne({ _id: new ObjectId(id) });
         return jsonResponse({ success: true });
       }
 
       // ─── ADMIN PRODUCTS GET ───────────────────────
       if (path === '/api/admin/products' && method === 'GET') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const products = await db.collection("products").find().sort({ created_at: -1 }).toArray();
         return jsonResponse(products.map(p => ({
           id: p._id.toString(),
@@ -742,7 +758,7 @@ export default {
 
       // ─── ADMIN PRODUCTS ADD ───────────────────────
       if (path === '/api/admin/products' && method === 'POST') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const { name, slug, price, original_price, category, tagline, image_url, stock, details, images } = await request.json();
         const result = await db.collection("products").insertOne({
           name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
@@ -759,7 +775,7 @@ export default {
       if (path.startsWith('/api/admin/products/') && method === 'PUT') {
         const id = path.replace('/api/admin/products/', '');
         if (!ObjectId.isValid(id)) return jsonResponse({ error: "Invalid product ID" }, 400);
-        const db = await connectDB(env);
+        const db = await getDB();
         const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images } = await request.json();
         const updateDoc = {
           name, price: Number(price),
@@ -781,14 +797,14 @@ export default {
       if (path.startsWith('/api/admin/products/') && method === 'DELETE') {
         const id = path.replace('/api/admin/products/', '');
         if (!ObjectId.isValid(id)) return jsonResponse({ error: "Invalid product ID" }, 400);
-        const db = await connectDB(env);
+        const db = await getDB();
         await db.collection("products").deleteOne({ _id: new ObjectId(id) });
         return jsonResponse({ success: true });
       }
 
       // ─── PUBLIC CONTACT ───────────────────────────
       if (path === '/api/contact' && method === 'POST') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const { name, email, subject, message } = await request.json();
         const result = await db.collection("contact_messages").insertOne({
           name, email, subject, message,
@@ -800,7 +816,7 @@ export default {
 
       // ─── ADMIN MESSAGES GET ───────────────────────
       if (path === '/api/admin/messages' && method === 'GET') {
-        const db = await connectDB(env);
+        const db = await getDB();
         const messages = await db.collection("contact_messages").find().sort({ created_at: -1 }).toArray();
         return jsonResponse(messages.map(m => ({
           id: m._id.toString(), name: m.name, email: m.email,
@@ -814,7 +830,7 @@ export default {
       if (path === '/api/admin/messages' && method === 'POST') {
         const { id } = await request.json();
         if (!id || !ObjectId.isValid(id)) return jsonResponse({ error: "Invalid message ID" }, 400);
-        const db = await connectDB(env);
+        const db = await getDB();
         await db.collection("contact_messages").updateOne(
           { _id: new ObjectId(id) }, { $set: { status: 'read', updated_at: new Date() } }
         );
@@ -825,7 +841,7 @@ export default {
       if (path.startsWith('/api/admin/messages/') && method === 'DELETE') {
         const id = path.replace('/api/admin/messages/', '');
         if (!ObjectId.isValid(id)) return jsonResponse({ error: "Invalid message ID" }, 400);
-        const db = await connectDB(env);
+        const db = await getDB();
         await db.collection("contact_messages").deleteOne({ _id: new ObjectId(id) });
         return jsonResponse({ success: true });
       }
@@ -835,6 +851,10 @@ export default {
     } catch (error) {
       console.error("Worker error:", error);
       return jsonResponse({ error: error.message }, 500);
+    } finally {
+      if (mongoClient) {
+        ctx.waitUntil(mongoClient.close().catch(console.error));
+      }
     }
   }
 };

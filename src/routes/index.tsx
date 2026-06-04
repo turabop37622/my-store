@@ -177,7 +177,7 @@ function HeroCarousel({ banners, loading }: { banners: Product[]; loading: boole
 
   return (
     <section className="relative w-full overflow-hidden bg-background pt-[115px]">
-      <div className="relative w-full aspect-[4/3] sm:aspect-video md:aspect-[2.4/1] bg-black overflow-hidden flex items-center shadow-2xl">
+      <div className="relative w-full h-[55vh] sm:h-auto sm:aspect-video md:aspect-[2.4/1] bg-black overflow-hidden flex items-center shadow-2xl">
         {slides.map((slide, i) => (
           <div
             key={i}

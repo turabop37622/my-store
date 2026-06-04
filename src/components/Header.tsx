@@ -195,7 +195,7 @@ export function Header() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && searchQuery.trim()) {
                       setSearchOpen(false);
-                      window.location.href = `/shop?category=${encodeURIComponent(searchQuery.trim())}`;
+                      window.location.href = `/shop?q=${encodeURIComponent(searchQuery.trim())}`;
                     }
                   }}
                 />

@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 const SearchSchema = z.object({
   category: z.any().optional(),
   page: z.any().optional(),
+  q: z.string().optional(),
 });
 
 const CATEGORIES = ["All", "Smart Watches", "Earbuds", "Headphones", "Speakers", "Accessories"];
@@ -27,6 +28,7 @@ function Shop() {
   const search = Route.useSearch();
   const category = search.category;
   const page = search.page;
+  const q = (search as any).q as string | undefined;
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
@@ -38,10 +40,20 @@ function Shop() {
     enabled: typeof window !== "undefined",
   });
 
-  const filtered =
-    category && category !== "All"
-      ? (products ?? []).filter((p: any) => p.category === category)
-      : products ?? [];
+  const filtered = (() => {
+    let list = products ?? [];
+    if (q && q.trim()) {
+      const term = q.trim().toLowerCase();
+      list = list.filter((p: any) =>
+        (p.name && p.name.toLowerCase().includes(term)) ||
+        (p.tagline && p.tagline.toLowerCase().includes(term)) ||
+        (p.category && p.category.toLowerCase().includes(term))
+      );
+    } else if (category && category !== "All") {
+      list = list.filter((p: any) => p.category === category);
+    }
+    return list;
+  })();
 
   const safePage = isNaN(Number(page)) ? 1 : Number(page);
   const totalPages = Math.max(1, Math.ceil((filtered?.length ?? 0) / ITEMS_PER_PAGE));
@@ -58,7 +70,7 @@ function Shop() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-8 py-12 border-b border-white/5">
           <div className="space-y-2">
             <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
-              {category || "Shop All"} <span className="text-primary/80">Products</span>
+              {q ? `Search: "${q}"` : category || "Shop All"} <span className="text-primary/80">Products</span>
             </h1>
             <p className="text-muted-foreground text-sm font-medium">
               Showing {filtered.length} premium tech essentials
