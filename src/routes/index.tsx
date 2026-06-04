@@ -69,7 +69,7 @@ function Index() {
       </section>
 
       <section className="mx-auto max-w-[1600px] px-4 md:px-10 py-12">
-        <div className="flex items-end justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
           <div>
             <span className="text-xs font-bold tracking-[0.2em] text-primary">
               // Best Sellers
@@ -100,7 +100,7 @@ function Index() {
 
       <section className="py-20 bg-background overflow-hidden">
         <div className="mx-auto max-w-[1600px] px-4 md:px-10">
-          <div className="relative group overflow-hidden rounded-[3rem] bg-gradient-to-br from-[#064e3b] via-[#022c22] to-black p-8 md:p-20 border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col md:flex-row items-center justify-between gap-12">
+          <div className="relative group overflow-hidden rounded-[2rem] md:rounded-[3rem] bg-gradient-to-br from-[#064e3b] via-[#022c22] to-black p-6 sm:p-8 md:p-20 border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12">
             <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/4 opacity-10 pointer-events-none">
               <svg width="600" height="600" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="0.5" className="scale-[3]">
                 <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
@@ -116,7 +116,7 @@ function Index() {
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-4xl md:text-6xl font-black tracking-tight uppercase text-white leading-none">
+                <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight uppercase text-white leading-none">
                   PAKISTAN-WIDE <br />
                   <span className="text-green-500">COD</span> SERVICE
                 </h2>
@@ -177,7 +177,7 @@ function HeroCarousel({ banners, loading }: { banners: Product[]; loading: boole
 
   return (
     <section className="relative w-full overflow-hidden bg-background pt-[115px]">
-      <div className="relative w-full aspect-[4/5] sm:aspect-video md:aspect-[2.4/1] bg-black overflow-hidden flex items-center shadow-2xl">
+      <div className="relative w-full aspect-[4/3] sm:aspect-video md:aspect-[2.4/1] bg-black overflow-hidden flex items-center shadow-2xl">
         {slides.map((slide, i) => (
           <div
             key={i}

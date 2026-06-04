@@ -238,7 +238,7 @@ async function sendPromoEmail(email, promoCode, expiresAt) {
             <div style="background:#f0fdf4;border:2px dashed #10b981;border-radius:12px;padding:24px;margin-bottom:24px;">
               <p style="margin:0;font-size:32px;font-weight:900;color:#059669;letter-spacing:4px;font-family:monospace;">${promoCode}</p>
             </div>
-            <p style="color:#6b7280;font-size:13px;">Valid for <strong>24 hours</strong> only — expires ${new Date(expiresAt).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
+            <p style="color:#6b7280;font-size:13px;">Valid for <strong>24 hours</strong> only — expires ${new Date(expiresAt).toLocaleString('en-US')}</p>
             <p style="color:#ef4444;font-size:13px;font-weight:600;">Single use only — expires after first use</p>
             <a href="https://breezygo.com/shop" style="display:inline-block;margin-top:24px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:16px;">Shop Now</a>
           </td>
@@ -269,6 +269,16 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
+// ─── AUTH MIDDLEWARE ──────────────────────────────
+app.use('/api/admin', (req, res, next) => {
+  if (req.path === '/login') return next();
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer admin-session-')) {
+    return res.status(401).json({ error: "Unauthorized access. Missing or invalid token." });
+  }
+  next();
+});
+
 // ─── PUBLIC PRODUCTS ──────────────────────────────
 app.get('/api/products', async (req, res) => {
   try {
@@ -277,7 +287,8 @@ app.get('/api/products', async (req, res) => {
     const filter = { is_active: { $ne: false } };
     if (category) filter.category = category;
     if (featured === 'true') filter.is_featured = true;
-    const products = await database.collection("products").find(filter).toArray();
+    const products = await database.collection("products").find(filter).project({ details: 0 }).toArray();
+    res.set('Cache-Control', 'public, max-age=300');
     res.json(products.map(p => ({
       id: p._id.toString(),
       name: p.name,
@@ -291,7 +302,6 @@ app.get('/api/products', async (req, res) => {
       is_featured: p.is_featured || false,
       stock: p.stock !== undefined ? Number(p.stock) : 100,
       is_active: p.is_active !== false,
-      details: p.details || [],
       images: p.images || (p.image_url ? [p.image_url] : [])
     })));
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -362,7 +372,7 @@ app.post('/api/orders', async (req, res) => {
     let discount_amount = 0;
     let verified_code = null;
     if (discount_code) {
-      const code = discount_code.toUpperCase().trim();
+      const code = String(discount_code).toUpperCase().trim();
       const promo = await database.collection("promo_codes").findOne({ code });
       if (promo && !promo.used && new Date() < new Date(promo.expires_at)) {
         discount_amount = Math.round(subtotal * (promo.discount_percent / 100));
