@@ -3,6 +3,11 @@ import { Trash2, Search, Eye, X } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
+function authAxios() {
+  const token = localStorage.getItem("admin_token");
+  return axios.create({ headers: { Authorization: `Bearer ${token}` } });
+}
+
 export default function Orders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -11,7 +16,7 @@ export default function Orders() {
 
   const fetchOrders = () => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-    axios.get(`${backendUrl}/api/admin/orders`)
+    authAxios().get(`${backendUrl}/api/admin/orders`)
       .then(res => { setOrders(res.data); setLoading(false); })
       .catch(err => { console.error(err); setLoading(false); });
   };
@@ -21,7 +26,7 @@ export default function Orders() {
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-      await axios.post(`${backendUrl}/api/admin/orders`, { id, status: newStatus });
+      await authAxios().post(`${backendUrl}/api/admin/orders`, { id, status: newStatus });
       toast.success("Status updated!");
       fetchOrders();
     } catch { toast.error("Failed to update."); }
@@ -31,7 +36,7 @@ export default function Orders() {
     if (!confirm("Are you sure you want to delete this order?")) return;
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-      await axios.delete(`${backendUrl}/api/admin/orders/${id}`);
+      await authAxios().delete(`${backendUrl}/api/admin/orders/${id}`);
       toast.success("Order deleted!");
       fetchOrders();
     } catch { toast.error("Failed to delete."); }
@@ -41,7 +46,7 @@ export default function Orders() {
     if (!confirm("Are you sure you want to delete ALL orders? This cannot be undone!")) return;
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-      await axios.delete(`${backendUrl}/api/admin/orders`);
+      await authAxios().delete(`${backendUrl}/api/admin/orders`);
       toast.success("All orders deleted!");
       fetchOrders();
     } catch { toast.error("Failed to delete all orders."); }
@@ -59,7 +64,6 @@ export default function Orders() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
 
-      {/* DETAIL MODAL */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -76,39 +80,15 @@ export default function Orders() {
               <div className="bg-slate-50 rounded-xl p-4 space-y-3">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Customer Info</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-slate-400">Name</p>
-                    <p className="font-semibold text-slate-800">{selectedOrder.customer}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400">Phone</p>
-                    <p className="font-semibold text-slate-800">{selectedOrder.phone}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400">City</p>
-                    <p className="font-semibold text-slate-800">{selectedOrder.city}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400">Date</p>
-                    <p className="font-semibold text-slate-800 text-xs">{selectedOrder.date}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400">Email</p>
-                    <p className="font-semibold text-slate-800">{selectedOrder.email || "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400">Postal Code</p>
-                    <p className="font-semibold text-slate-800">{selectedOrder.postalCode || "N/A"}</p>
-                  </div>
+                  <div><p className="text-xs text-slate-400">Name</p><p className="font-semibold text-slate-800">{selectedOrder.customer}</p></div>
+                  <div><p className="text-xs text-slate-400">Phone</p><p className="font-semibold text-slate-800">{selectedOrder.phone}</p></div>
+                  <div><p className="text-xs text-slate-400">City</p><p className="font-semibold text-slate-800">{selectedOrder.city}</p></div>
+                  <div><p className="text-xs text-slate-400">Date</p><p className="font-semibold text-slate-800 text-xs">{selectedOrder.date}</p></div>
+                  <div><p className="text-xs text-slate-400">Email</p><p className="font-semibold text-slate-800">{selectedOrder.email || "N/A"}</p></div>
+                  <div><p className="text-xs text-slate-400">Postal Code</p><p className="font-semibold text-slate-800">{selectedOrder.postalCode || "N/A"}</p></div>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-400">Address</p>
-                  <p className="font-semibold text-slate-800">{selectedOrder.address}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Tracking ID</p>
-                  <p className="font-semibold text-slate-800 font-mono">{selectedOrder.trackingId || "Not assigned"}</p>
-                </div>
+                <div><p className="text-xs text-slate-400">Address</p><p className="font-semibold text-slate-800">{selectedOrder.address}</p></div>
+                <div><p className="text-xs text-slate-400">Tracking ID</p><p className="font-semibold text-slate-800 font-mono">{selectedOrder.trackingId || "Not assigned"}</p></div>
               </div>
               <div className="bg-slate-50 rounded-xl p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Items</h3>
@@ -139,12 +119,8 @@ export default function Orders() {
             />
           </div>
           {orders.length > 0 && (
-            <button
-              onClick={handleClearAll}
-              className="flex items-center gap-2 h-10 px-4 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm whitespace-nowrap"
-            >
-              <Trash2 size={16} />
-              Clear All
+            <button onClick={handleClearAll} className="flex items-center gap-2 h-10 px-4 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm whitespace-nowrap">
+              <Trash2 size={16} /> Clear All
             </button>
           )}
         </div>
@@ -183,10 +159,10 @@ export default function Orders() {
                   <td className="p-4 align-top">
                     <select
                       className={`h-8 px-2 text-xs font-bold uppercase tracking-wider rounded-lg border-none focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer ${order.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
-                        order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                          order.status === 'processing' ? 'bg-amber-100 text-amber-700' :
-                            order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                              'bg-slate-100 text-slate-700'
+                          order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                            order.status === 'processing' ? 'bg-amber-100 text-amber-700' :
+                              order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                'bg-slate-100 text-slate-700'
                         }`}
                       value={order.status}
                       onChange={(e) => handleStatusChange(order.id, e.target.value)}
@@ -200,10 +176,10 @@ export default function Orders() {
                   </td>
                   <td className="p-4 align-top text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => setSelectedOrder(order)} className="p-2 text-slate-400 hover:text-emerald-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="View Details">
+                      <button onClick={() => setSelectedOrder(order)} className="p-2 text-slate-400 hover:text-emerald-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm">
                         <Eye size={16} />
                       </button>
-                      <button onClick={() => handleDelete(order.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Delete Order">
+                      <button onClick={() => handleDelete(order.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm">
                         <Trash2 size={16} />
                       </button>
                     </div>

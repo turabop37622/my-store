@@ -14,7 +14,7 @@ const SearchSchema = z.object({
 
 const CATEGORIES = ["All", "Smart Watches", "Earbuds", "Headphones", "Speakers", "Accessories"];
 const ITEMS_PER_PAGE = 15;
-const API_URL = "https://breezygo-admin-backend.turabop37622.workers.dev";
+import { API_URL } from "@/lib/db";
 
 export const Route = createFileRoute("/shop")({
   validateSearch: (s) => SearchSchema.parse(s),

@@ -3,21 +3,27 @@ import { Plus, Edit, Trash2, X, Loader2, ToggleLeft, ToggleRight } from "lucide-
 import axios from "axios";
 import { toast } from "sonner";
 
-const CATEGORIES = ["Earbuds", "Smart Watches", "Headphones", "Speakers", "Accessories"];
-
-interface ProductDetail {
-  key: string;
-  value: string;
+function authAxios() {
+  const token = localStorage.getItem("admin_token");
+  return axios.create({ headers: { Authorization: `Bearer ${token}` } });
 }
 
+const CATEGORIES = ["Earbuds", "Smart Watches", "Headphones", "Speakers", "Accessories"];
+
+interface ProductDetail { key: string; value: string; }
 interface ProductForm {
   name: string; price: string; original_price: string; category: string;
   tagline: string; stock: string; image_url: string;
-  details: ProductDetail[];
-  images: string[];
+  details: ProductDetail[]; images: string[];
+  qty2_discount_percent: string;
+  qty3_discount_percent: string;
 }
 
-const emptyForm: ProductForm = { name: "", price: "", original_price: "", category: "Earbuds", tagline: "", stock: "100", image_url: "", details: [], images: [] };
+const emptyForm: ProductForm = { 
+  name: "", price: "", original_price: "", category: "Earbuds", tagline: "", stock: "100", image_url: "", details: [], images: [],
+  qty2_discount_percent: "3",
+  qty3_discount_percent: "5"
+};
 
 export default function Products() {
   const [products, setProducts] = useState<any[]>([]);
@@ -29,7 +35,7 @@ export default function Products() {
 
   const fetchProducts = () => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-    axios.get(`${backendUrl}/api/admin/products`)
+    authAxios().get(`${backendUrl}/api/admin/products`)
       .then(res => { setProducts(res.data); setLoading(false); })
       .catch(err => { console.error(err); setLoading(false); });
   };
@@ -41,8 +47,9 @@ export default function Products() {
     setForm({
       name: p.name, price: String(p.price), original_price: p.original_price ? String(p.original_price) : "",
       category: p.category, tagline: p.tagline || "", stock: String(p.stock), image_url: p.image_url || "",
-      details: p.details || [],
-      images: p.images || (p.image_url ? [p.image_url] : [])
+      details: p.details || [], images: p.images || (p.image_url ? [p.image_url] : []),
+      qty2_discount_percent: p.qty2_discount_percent !== undefined ? String(p.qty2_discount_percent) : "3",
+      qty3_discount_percent: p.qty3_discount_percent !== undefined ? String(p.qty3_discount_percent) : "5"
     });
     setEditingId(p.id);
     setShowModal(true);
@@ -55,17 +62,22 @@ export default function Products() {
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
       if (editingId) {
-        await axios.put(`${backendUrl}/api/admin/products/${editingId}`, {
+        await authAxios().put(`${backendUrl}/api/admin/products/${editingId}`, {
           name: form.name, price: form.price, original_price: form.original_price || null,
-          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.images[0] || form.image_url, is_active: true,
-          details: form.details, images: form.images
+          category: form.category, tagline: form.tagline, stock: form.stock,
+          image_url: form.images[0] || form.image_url, is_active: true,
+          details: form.details, images: form.images,
+          qty2_discount_percent: Number(form.qty2_discount_percent),
+          qty3_discount_percent: Number(form.qty3_discount_percent)
         });
         toast.success("Product updated!");
       } else {
-        await axios.post(`${backendUrl}/api/admin/products`, {
+        await authAxios().post(`${backendUrl}/api/admin/products`, {
           name: form.name, price: form.price, original_price: form.original_price || null,
-          category: form.category, tagline: form.tagline, stock: form.stock, image_url: form.images[0] || form.image_url,
-          details: form.details, images: form.images
+          category: form.category, tagline: form.tagline, stock: form.stock,
+          image_url: form.images[0] || form.image_url, details: form.details, images: form.images,
+          qty2_discount_percent: Number(form.qty2_discount_percent),
+          qty3_discount_percent: Number(form.qty3_discount_percent)
         });
         toast.success("Product added!");
       }
@@ -79,7 +91,7 @@ export default function Products() {
     if (!confirm("Delete this product permanently?")) return;
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-      await axios.delete(`${backendUrl}/api/admin/products/${id}`);
+      await authAxios().delete(`${backendUrl}/api/admin/products/${id}`);
       toast.success("Product deleted!");
       fetchProducts();
     } catch { toast.error("Failed to delete."); }
@@ -88,13 +100,15 @@ export default function Products() {
   const handleToggleActive = async (product: any) => {
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-      await axios.put(`${backendUrl}/api/admin/products/${product.id}`, {
+      await authAxios().put(`${backendUrl}/api/admin/products/${product.id}`, {
         name: product.name, price: product.price,
         original_price: product.original_price || null,
         category: product.category, tagline: product.tagline || "",
         stock: product.stock, image_url: product.image_url,
         details: product.details || [], images: product.images || [],
-        is_active: !product.is_active
+        is_active: !product.is_active,
+        qty2_discount_percent: product.qty2_discount_percent !== undefined ? Number(product.qty2_discount_percent) : 3,
+        qty3_discount_percent: product.qty3_discount_percent !== undefined ? Number(product.qty3_discount_percent) : 5
       });
       toast.success(product.is_active ? "Product deactivated!" : "Product activated!");
       fetchProducts();
@@ -145,29 +159,22 @@ export default function Products() {
                   </td>
                   <td className="p-4 text-slate-500">{product.stock}</td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                      product.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                    }`}>{product.status}</span>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${product.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                      }`}>{product.status}</span>
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleToggleActive(product)}
-                        title={product.is_active ? "Deactivate" : "Activate"}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm ${
-                          product.is_active
+                      <button onClick={() => handleToggleActive(product)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm ${product.is_active
                             ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
                             : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
-                        }`}
-                      >
-                        {product.is_active
-                          ? <><ToggleRight size={16} /> Active</>
-                          : <><ToggleLeft size={16} /> Inactive</>}
+                          }`}>
+                        {product.is_active ? <><ToggleRight size={16} /> Active</> : <><ToggleLeft size={16} /> Inactive</>}
                       </button>
-                      <button onClick={() => openEdit(product)} className="p-2 text-slate-400 hover:text-blue-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Edit">
+                      <button onClick={() => openEdit(product)} className="p-2 text-slate-400 hover:text-blue-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm">
                         <Edit size={16} />
                       </button>
-                      <button onClick={() => handleDelete(product.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Remove">
+                      <button onClick={() => handleDelete(product.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -179,7 +186,6 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)} />
@@ -188,48 +194,55 @@ export default function Products() {
               <h2 className="text-xl font-bold text-slate-900">{editingId ? "Edit Product" : "Add New Product"}</h2>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-900"><X size={20} /></button>
             </div>
-
             <form onSubmit={handleSave} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Product Name *</label>
-                <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})}
+                <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="BreezyGo ProBuds X1" />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Price (Rs) *</label>
-                  <input required type="number" value={form.price} onChange={e => setForm({...form, price: e.target.value})}
+                  <input required type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="2999" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Original Price</label>
-                  <input type="number" value={form.original_price} onChange={e => setForm({...form, original_price: e.target.value})}
+                  <input type="number" value={form.original_price} onChange={e => setForm({ ...form, original_price: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="4999" />
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category *</label>
-                  <select required value={form.category} onChange={e => setForm({...form, category: e.target.value})}
+                  <select required value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer">
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Stock</label>
-                  <input type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})}
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Stock *</label>
+                  <input required type="number" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="100" />
                 </div>
               </div>
-
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Qty 2 Discount % *</label>
+                  <input required type="number" min="0" max="100" value={form.qty2_discount_percent} onChange={e => setForm({ ...form, qty2_discount_percent: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="3" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Qty 3+ Discount % *</label>
+                  <input required type="number" min="0" max="100" value={form.qty3_discount_percent} onChange={e => setForm({ ...form, qty3_discount_percent: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="5" />
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tagline</label>
-                <input value={form.tagline} onChange={e => setForm({...form, tagline: e.target.value})}
+                <input value={form.tagline} onChange={e => setForm({ ...form, tagline: e.target.value })}
                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Premium wireless earbuds with ANC" />
               </div>
-
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Images</label>
                 <div className="flex flex-col gap-2">
@@ -241,14 +254,10 @@ export default function Products() {
                         const img = new Image();
                         img.onload = () => {
                           const canvas = document.createElement('canvas');
-                          let width = img.width;
-                          let height = img.height;
+                          let width = img.width; let height = img.height;
                           const MAX_SIZE = 800;
-                          if (width > height) {
-                            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
-                          } else {
-                            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-                          }
+                          if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
+                          else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
                           canvas.width = width; canvas.height = height;
                           const ctx = canvas.getContext('2d');
                           if (ctx) {
@@ -261,7 +270,6 @@ export default function Products() {
                       reader.readAsDataURL(file);
                     });
                   }} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" />
-                  
                   {form.images.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {form.images.map((img, idx) => (
@@ -288,7 +296,6 @@ export default function Products() {
                   )}
                 </div>
               </div>
-
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Product Details</label>
@@ -299,29 +306,17 @@ export default function Products() {
                 </div>
                 {form.details.map((detail, index) => (
                   <div key={index} className="flex gap-2">
-                    <input value={detail.key} onChange={e => {
-                        const newDetails = [...form.details];
-                        newDetails[index].key = e.target.value;
-                        setForm({ ...form, details: newDetails });
-                      }}
+                    <input value={detail.key} onChange={e => { const d = [...form.details]; d[index].key = e.target.value; setForm({ ...form, details: d }); }}
                       className="w-1/3 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. Battery" />
-                    <input value={detail.value} onChange={e => {
-                        const newDetails = [...form.details];
-                        newDetails[index].value = e.target.value;
-                        setForm({ ...form, details: newDetails });
-                      }}
+                    <input value={detail.value} onChange={e => { const d = [...form.details]; d[index].value = e.target.value; setForm({ ...form, details: d }); }}
                       className="w-2/3 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. Up to 30 hrs" />
-                    <button type="button" onClick={() => {
-                        const newDetails = form.details.filter((_, i) => i !== index);
-                        setForm({ ...form, details: newDetails });
-                      }}
+                    <button type="button" onClick={() => setForm({ ...form, details: form.details.filter((_, i) => i !== index) })}
                       className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm">
                       <Trash2 size={16} />
                     </button>
                   </div>
                 ))}
               </div>
-
               <button type="submit" disabled={saving}
                 className="w-full h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50">
                 {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : editingId ? "Update Product" : "Add Product"}

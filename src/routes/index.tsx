@@ -9,6 +9,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, Headphones, Watch, Speaker, Cable } from "lucide-react";
+import DeliveryBanner from "@/components/DeliveryBanner";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -46,6 +47,7 @@ function Index() {
   return (
     <div className="bg-background min-h-screen">
       <HeroCarousel banners={banners} loading={isLoading} />
+      <DeliveryBanner />
 
       <section className="mx-auto max-w-7xl px-3 sm:px-6 py-8">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">

@@ -207,7 +207,7 @@ async function sendReviewEmail(order) {
 
 async function sendPromoEmail(email, promoCode, expiresAt) {
   try {
-    await fetch("https://api.brevo.com/v3/smtp/email", {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -216,7 +216,7 @@ async function sendPromoEmail(email, promoCode, expiresAt) {
       body: JSON.stringify({
         sender: { name: "BreezyGo Store", email: "turabop37622@gmail.com" },
         to: [{ email }],
-        subject: `🎉 Your 20% OFF Promo Code is Here!`,
+        subject: `🎉 Your 5% OFF Promo Code is Here!`,
         htmlContent: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -234,7 +234,7 @@ async function sendPromoEmail(email, promoCode, expiresAt) {
           <td style="padding:40px;text-align:center;">
             <div style="font-size:56px;margin-bottom:16px;">🎉</div>
             <h2 style="margin:0 0 12px;color:#111827;font-size:24px;font-weight:800;">Welcome to the Club!</h2>
-            <p style="color:#6b7280;font-size:15px;margin-bottom:32px;">Here's your exclusive 20% OFF promo code:</p>
+            <p style="color:#6b7280;font-size:15px;margin-bottom:32px;">Here's your exclusive 5% OFF promo code:</p>
             <div style="background:#f0fdf4;border:2px dashed #10b981;border-radius:12px;padding:24px;margin-bottom:24px;">
               <p style="margin:0;font-size:32px;font-weight:900;color:#059669;letter-spacing:4px;font-family:monospace;">${promoCode}</p>
             </div>
@@ -255,7 +255,14 @@ async function sendPromoEmail(email, promoCode, expiresAt) {
 </html>`
       })
     });
-  } catch (err) { console.error("Promo email error:", err); }
+    const result = await response.json();
+    console.log("Brevo promo email status:", response.status, JSON.stringify(result));
+    if (!response.ok) {
+      throw new Error(`Brevo promo email error: ${JSON.stringify(result)}`);
+    }
+  } catch (err) {
+    console.error("Promo email error:", err);
+  }
 }
 
 // ─── AUTH ──────────────────────────────────────────
@@ -302,6 +309,41 @@ app.get('/api/products', async (req, res) => {
       is_featured: p.is_featured || false,
       stock: p.stock !== undefined ? Number(p.stock) : 100,
       is_active: p.is_active !== false,
+      images: p.images || (p.image_url ? [p.image_url] : []),
+      qty2_discount_percent: p.qty2_discount_percent !== undefined ? p.qty2_discount_percent : 3,
+      qty3_discount_percent: p.qty3_discount_percent !== undefined ? p.qty3_discount_percent : 5
+    })));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC PRODUCT SEARCH ────────────────────────
+app.get('/api/products/search', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const q = req.query.q || '';
+    if (!q || q.length < 3) {
+      return res.json([]);
+    }
+    const filter = {
+      is_active: { $ne: false },
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { category: { $regex: q, $options: 'i' } }
+      ]
+    };
+    const products = await database.collection("products").find(filter).limit(8).toArray();
+    res.json(products.map(p => ({
+      id: p._id.toString(),
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      original_price: p.original_price || null,
+      category: p.category,
+      tagline: p.tagline || '',
+      image_url: p.image_url || '',
+      rating: p.rating || 4.5,
+      is_featured: p.is_featured || false,
+      stock: p.stock !== undefined ? Number(p.stock) : 100,
       images: p.images || (p.image_url ? [p.image_url] : [])
     })));
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -327,9 +369,145 @@ app.get('/api/products/:slug', async (req, res) => {
       stock: product.stock !== undefined ? Number(product.stock) : 100,
       is_active: product.is_active !== false,
       details: product.details || [],
-      images: product.images || (product.image_url ? [product.image_url] : [])
+      images: product.images || (product.image_url ? [product.image_url] : []),
+      qty2_discount_percent: product.qty2_discount_percent !== undefined ? product.qty2_discount_percent : 3,
+      qty3_discount_percent: product.qty3_discount_percent !== undefined ? product.qty3_discount_percent : 5
     });
   } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+function getLocalMockResponse(userMessage, orderInfo) {
+  const msg = userMessage.toLowerCase();
+
+  if (orderInfo) {
+    return `Aapke order ki details mil gayi hain:${orderInfo}\n\nLahore me delivery 24-48 hours aur baqi cities me 4-6 days me ho jati hai. Shipping free hai!`;
+  }
+
+  if (msg.includes("order") || msg.includes("track") || msg.includes("status")) {
+    return "Aap apna 8-character ka Order ID (jaise #ABC12345) chat me likhein, main aapko status track karke bta dunga!";
+  }
+
+  if (msg.includes("earbud") || msg.includes("airpod") || msg.includes("headphone") || msg.includes("sound") || msg.includes("bud")) {
+    return "BreezyGo par humare paas premium quality ke Earbuds aur Headphones available hain, jinki sound quality aur battery life excellent hai! Delivery Lahore me 24-48 ghante me bilkul free ho jati hai.";
+  }
+
+  if (msg.includes("delivery") || msg.includes("shipping") || msg.includes("time") || msg.includes("deliver") || msg.includes("charges")) {
+    return "BreezyGo par shipping charges bilkul FREE hain! Lahore me delivery time 24-48 ghante hai, aur baqi cities me 4-6 din lagte hain.";
+  }
+
+  if (msg.includes("hello") || msg.includes("hi") || msg.includes("hey") || msg.includes("assalam") || msg.includes("kia hal")) {
+    return "Hi! Main BreezyGo AI Support assistant hoon. Main aapki kya madad kar sakta hoon? (Local Mock Mode Active)";
+  }
+
+  return `Aapka message mil gaya hai: "${userMessage}". (Local Mock Mode Active). Agar aap apna order status check karna chahte hain to order ID likhein, ya delivery/products ke baare me poochhein!`;
+}
+
+// ─── PUBLIC SUPPORT CHAT AI ────────────────────────
+app.post('/api/support-chat', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { messages } = req.body;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "Invalid messages format" });
+    }
+
+    const settings = await database.collection("app_settings").findOne({ _id: "global" }) || {};
+    const aiEnabled = settings.ai_chat_enabled !== false;
+    const systemPromptOverride = settings.ai_chat_system_prompt || "You are the AI assistant for BreezyGo Store. Delivery Times: Lahore 24-48 hours, Other Cities 4-6 days. Shipping is free. Keep responses short and in English/Roman Urdu.";
+
+    if (!aiEnabled) {
+      return res.status(403).json({ error: "AI Chat is currently disabled" });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "Gemini API key is not configured" });
+    }
+
+    // Try to find any order ID mentioned
+    const cleanMsg = messages.map(m => m.content).join(" ");
+    const orderIdMatch = cleanMsg.match(/\b([A-Fa-f0-9]{24})\b/) || cleanMsg.match(/\b([A-Za-z0-9]{8})\b/);
+    let orderInfo = "";
+    if (orderIdMatch) {
+      const matchedId = orderIdMatch[1];
+      let order = null;
+      if (matchedId.length === 24) {
+        order = await database.collection("orders").findOne({ _id: new ObjectId(matchedId) });
+      } else {
+        const allOrders = await database.collection("orders").find().sort({ created_at: -1 }).limit(500).toArray();
+        order = allOrders.find(o => o._id.toString().slice(-8).toUpperCase() === matchedId.toUpperCase());
+      }
+      if (order) {
+        orderInfo = `\nFound matching order details:
+- Order ID: #${order._id.toString().slice(-8).toUpperCase()}
+- Status: ${order.status}
+- Customer Name: ${order.customer_name}
+- Total Amount: Rs ${order.total_amount}
+- Items: ${order.items.map(i => `${i.quantity}x ${i.name}`).join(", ")}
+- Address: ${order.address}, ${order.city}
+- Placed on: ${new Date(order.created_at).toLocaleString()}`;
+      }
+    }
+
+    const finalSystemPrompt = `${systemPromptOverride}${orderInfo ? `\n\nCUSTOMER ORDER CONTEXT:\n${orderInfo}` : ""}`;
+
+    // Clean messages for Gemini API (roles must be 'user' or 'model')
+    // Inject system prompt as the first user/model exchange since
+    // system_instruction is not supported in the v1 REST API.
+    const geminiMessages = [
+      { role: 'user', parts: [{ text: finalSystemPrompt }] },
+      { role: 'model', parts: [{ text: 'Understood. I will follow these instructions.' }] }
+    ];
+    for (const m of messages) {
+      if (m.role === 'user' || m.role === 'assistant') {
+        // Skip leading assistant messages
+        if (geminiMessages.length === 2 && m.role === 'assistant') {
+          continue;
+        }
+        geminiMessages.push({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        });
+      }
+    }
+
+    // Call Gemini API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: geminiMessages
+      })
+    });
+
+    const data = await response.json();
+    let reply = "";
+    if (!response.ok) {
+      console.warn("Gemini API Error (falling back to local mock):", data);
+      const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content || "";
+      reply = getLocalMockResponse(lastUserMsg, orderInfo);
+    } else {
+      reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't process that.";
+    }
+
+    // Optionally log to support_conversations
+    try {
+      await database.collection("support_conversations").insertOne({
+        messages: [...messages, { role: "assistant", content: reply }],
+        order_info: orderInfo || null,
+        created_at: new Date()
+      });
+    } catch (logErr) {
+      console.error("Error logging support conversation:", logErr);
+    }
+
+    return res.json({ reply });
+  } catch (error) {
+    console.error("Support Chat Error:", error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ─── PUBLIC ORDER SUBMIT ───────────────────────────
@@ -357,14 +535,28 @@ app.post('/api/orders', async (req, res) => {
     const trustedItems = items.map(i => {
       const p = productMap.get(i.product_id);
       if (!p) throw new Error(`Product not available: ${i.name}`);
+
+      const qty2_discount = p.qty2_discount_percent !== undefined ? Number(p.qty2_discount_percent) : 3;
+      const qty3_discount = p.qty3_discount_percent !== undefined ? Number(p.qty3_discount_percent) : 5;
+
+      let discountPercent = 0;
+      if (i.quantity === 2) {
+        discountPercent = qty2_discount;
+      } else if (i.quantity >= 3) {
+        discountPercent = qty3_discount;
+      }
+
+      const finalPrice = Math.round(Number(p.price) * (1 - discountPercent / 100));
+
       return {
         product_id: p._id.toString(),
         slug: p.slug,
         name: p.name,
-        price: Number(p.price),
+        price: finalPrice,
+        original_price: Number(p.price),
         quantity: i.quantity,
         image_url: p.image_url,
-        line_total: Number(p.price) * i.quantity,
+        line_total: finalPrice * i.quantity,
       };
     });
 
@@ -501,7 +693,7 @@ app.post('/api/admin/subscribers/approve', async (req, res) => {
     await database.collection("promo_codes").insertOne({
       code: promoCode,
       email: subscriber.email,
-      discount_percent: 20,
+      discount_percent: 5,
       used: false,
       expires_at: expiresAt,
       created_at: new Date()
@@ -644,7 +836,9 @@ app.get('/api/admin/products', async (req, res) => {
       is_active: p.is_active !== false,
       status: p.is_active !== false ? 'Active' : 'Out of Stock',
       details: p.details || [],
-      images: p.images || (p.image_url ? [p.image_url] : [])
+      images: p.images || (p.image_url ? [p.image_url] : []),
+      qty2_discount_percent: p.qty2_discount_percent !== undefined ? p.qty2_discount_percent : 3,
+      qty3_discount_percent: p.qty3_discount_percent !== undefined ? p.qty3_discount_percent : 5
     })));
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -652,14 +846,16 @@ app.get('/api/admin/products', async (req, res) => {
 app.post('/api/admin/products', async (req, res) => {
   try {
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock, details, images } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, details, images, qty2_discount_percent, qty3_discount_percent } = req.body;
     const result = await database.collection("products").insertOne({
       name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
       price: Number(price), original_price: original_price ? Number(original_price) : null,
       category, tagline: tagline || '', image_url: image_url || '',
       stock: Number(stock) || 100, is_active: true, is_featured: false,
       rating: 4.5, created_at: new Date(), details: details || [],
-      images: images || []
+      images: images || [],
+      qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
+      qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5
     });
     res.json({ success: true, id: result.insertedId.toString() });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -671,7 +867,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       return res.status(400).json({ error: "Invalid product ID" });
     }
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent } = req.body;
     const updateDoc = {
       name,
       price: Number(price),
@@ -681,6 +877,8 @@ app.put('/api/admin/products/:id', async (req, res) => {
       stock: Number(stock) || 0,
       is_active: is_active !== false,
       details: details || [],
+      qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
+      qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
       updated_at: new Date()
     };
     if (images) updateDoc.images = images;
@@ -740,6 +938,502 @@ app.delete('/api/admin/messages/:id', async (req, res) => {
     }
     const database = await connectDB();
     await database.collection("contact_messages").deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC SETTINGS ──────────────────────────────
+app.get('/api/settings', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const settings = await database.collection("app_settings").findOne({ _id: "global" });
+    const defaults = {
+      live_viewers_enabled: true, live_viewers_min: 3, live_viewers_max: 30,
+      live_viewers_interval_min: 15, live_viewers_interval_max: 45,
+      sales_graph_enabled_global: true,
+      lahore_delivery_hours: { min: 24, max: 48 },
+      other_cities_processing_days: 2,
+      other_cities_shipping_days: 2,
+      homepage_banner_enabled: true,
+      homepage_banner_text: "🚀 24-48 Hour Delivery Anywhere in Lahore — No Extra Charges!"
+    };
+    res.json({ ...defaults, ...(settings || {}), _id: undefined });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── ADMIN SETTINGS ───────────────────────────────
+app.get('/api/admin/settings', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const settings = await database.collection("app_settings").findOne({ _id: "global" });
+    const defaults = {
+      live_viewers_enabled: true, live_viewers_min: 3, live_viewers_max: 30,
+      live_viewers_interval_min: 15, live_viewers_interval_max: 45,
+      sales_graph_enabled_global: true,
+      lahore_delivery_hours: { min: 24, max: 48 },
+      other_cities_processing_days: 2,
+      other_cities_shipping_days: 2,
+      homepage_banner_enabled: true,
+      homepage_banner_text: "🚀 24-48 Hour Delivery Anywhere in Lahore — No Extra Charges!"
+    };
+    res.json({ ...defaults, ...(settings || {}), _id: undefined });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.put('/api/admin/settings', async (req, res) => {
+  try {
+    const database = await connectDB();
+    await database.collection("app_settings").updateOne(
+      { _id: "global" },
+      { $set: { ...req.body, updated_at: new Date() } },
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC STOCK BATCHES ─────────────────────────
+app.get('/api/stock-batches/:productId', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const batches = await database.collection("stock_batches")
+      .find({ product_id: req.params.productId })
+      .sort({ order: 1, created_at: 1 }).toArray();
+    const activeBatch = batches.find(b => (b.remaining ?? b.quantity) > 0) || null;
+    res.json({
+      active_batch: activeBatch ? {
+        id: activeBatch._id.toString(), label: activeBatch.label,
+        quantity: activeBatch.quantity, remaining: activeBatch.remaining ?? activeBatch.quantity,
+      } : null,
+      total_batches: batches.length,
+    });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── ADMIN STOCK BATCHES ──────────────────────────
+app.get('/api/admin/stock-batches/:productId', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const batches = await database.collection("stock_batches")
+      .find({ product_id: req.params.productId })
+      .sort({ order: 1, created_at: 1 }).toArray();
+    res.json(batches.map((b, i) => ({
+      id: b._id.toString(), product_id: b.product_id,
+      label: b.label || `Batch ${i + 1}`, quantity: b.quantity,
+      remaining: b.remaining ?? b.quantity, order: b.order ?? i, created_at: b.created_at,
+    })));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.post('/api/admin/stock-batches/:productId', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { label, quantity } = req.body;
+    if (!quantity || quantity < 1) return res.status(400).json({ error: 'Quantity required' });
+    const count = await database.collection("stock_batches").countDocuments({ product_id: req.params.productId });
+    const result = await database.collection("stock_batches").insertOne({
+      product_id: req.params.productId,
+      label: label || `Batch ${count + 1}`,
+      quantity: Number(quantity), remaining: Number(quantity),
+      order: count, created_at: new Date(),
+    });
+    res.json({ success: true, id: result.insertedId.toString() });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.delete('/api/admin/stock-batches/delete/:batchId', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.batchId)) return res.status(400).json({ error: 'Invalid batch ID' });
+    const database = await connectDB();
+    await database.collection("stock_batches").deleteOne({ _id: new ObjectId(req.params.batchId) });
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+// ─── PUBLIC REVIEWS ───────────────────────────────
+app.post('/api/reviews/:productId', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { customer_name, rating, comment, images } = req.body;
+    if (!customer_name || !rating) {
+      return res.status(400).json({ error: 'Customer name and rating are required' });
+    }
+    const newReview = {
+      product_id: req.params.productId,
+      customer_name,
+      rating: Number(rating),
+      comment: comment || '',
+      images: Array.isArray(images) ? images : [],
+      status: 'pending',
+      is_active: true,
+      created_at: new Date()
+    };
+    const result = await database.collection("reviews").insertOne(newReview);
+    res.json({ success: true, id: result.insertedId.toString() });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC REVIEWS HELPERS ───────────────────────
+function hashCode(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+}
+
+function getFakeReviewsForProduct(productId, productName = "product") {
+  const seed = hashCode(productId);
+
+  const firstNames = ["Ahmed", "Muhammad", "Sana", "Zainab", "Ali", "Bilal", "Ayesha", "Fatima", "Hamza", "Osama", "Kiran", "Sidra", "Tayyab", "Zain", "Farhan", "Maria", "Usman", "Arslan", "Hassan", "Nida"];
+  const lastNames = ["R.", "K.", "H.", "S.", "A.", "M.", "B.", "Z.", "F.", "T.", "N.", "I.", "U.", "G.", "P."];
+  const cities = ["Lahore", "Karachi", "Islamabad", "Faisalabad", "Rawalpindi", "Peshawar", "Multan", "Sialkot", "Quetta", "Gujranwala"];
+
+  const isWatch = productName.toLowerCase().includes("watch") || productName.toLowerCase().includes("luna");
+  const isAudio = productName.toLowerCase().includes("earbud") || productName.toLowerCase().includes("bud") || productName.toLowerCase().includes("pod") || productName.toLowerCase().includes("audio") || productName.toLowerCase().includes("headphone");
+
+  const watchComments = [
+    { rating: 5, comment: "Incredible value for money. The Bluetooth calling feature works perfectly, and the speaker is surprisingly loud and clear. Very premium finish!" },
+    { rating: 5, comment: "I am using this watch since a week and battery is still at 40%. The display is super sharp and touch response is very smooth. Fully satisfied." },
+    { rating: 4, comment: "Great watch! Screen and body build quality is top-notch. Step tracking is 95% accurate. Delivery was super fast in Lahore." },
+    { rating: 5, comment: "Mind blowing product. BreezyGo level design at a very affordable price. Highly recommended to everyone!" },
+    { rating: 5, comment: "Watch ki quality bht achi hai. Metallic body feels solid and health sensors work fine. Recommended." }
+  ];
+
+  const audioComments = [
+    { rating: 5, comment: "Sound quality is outstanding, bass is very deep and active noise cancellation is decent. Battery backup is around 30 hours with case." },
+    { rating: 5, comment: "Best buds at this price tag. Connects instantly with my iPhone. Comfort is great, doesn't fall out during running." },
+    { rating: 4, comment: "Very good sound signature and clear mic quality during phone calls. Case feels light but build is decent." },
+    { rating: 5, comment: "Bht zabardast sound hai. Base bht heavy hai or charge b bht jaldi hoty hain. Recommended." },
+    { rating: 5, comment: "Delivery was very fast (only 2 days to Karachi). Sound is crystal clear. Definitely buying another one." }
+  ];
+
+  const generalComments = [
+    { rating: 5, comment: "Highly impressed with the premium packaging and build quality. Exceeded my expectations!" },
+    { rating: 5, comment: "Product is 100% original as advertised. Seller was cooperative on WhatsApp and delivery was quick." },
+    { rating: 4, comment: "Quality is good and works perfectly. Value for money product." },
+    { rating: 5, comment: "Bht pyari cheez hai, packing bht achi thi. Direct delivery mili 2 din ma." },
+    { rating: 5, comment: "Worth every rupee. The premium finish is amazing." }
+  ];
+
+  const commentPool = isWatch ? watchComments : (isAudio ? audioComments : generalComments);
+
+  const fakeReviews = [];
+  const count = 3;
+
+  for (let i = 0; i < count; i++) {
+    const nameIdx = (seed + i * 7) % firstNames.length;
+    const lastIdx = (seed + i * 13) % lastNames.length;
+    const cityIdx = (seed + i * 19) % cities.length;
+    const commentIdx = (seed + i * 3) % commentPool.length;
+
+    const poolItem = commentPool[commentIdx];
+    const rating = poolItem.rating;
+    const comment = poolItem.comment;
+
+    const daysAgo = ((seed + i * 11) % 25) + 3;
+    const dateText = daysAgo < 7 ? `${daysAgo} days ago` : (daysAgo < 14 ? "1 week ago" : (daysAgo < 21 ? "2 weeks ago" : "3 weeks ago"));
+
+    fakeReviews.push({
+      _id: `fake-${productId}-${i}`,
+      product_id: productId,
+      customer_name: `${firstNames[nameIdx]} ${lastNames[lastIdx]} (${cities[cityIdx]})`,
+      rating: rating,
+      comment: comment,
+      images: [],
+      status: "approved",
+      is_active: true,
+      created_at: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
+      date: dateText,
+      is_fake: true
+    });
+  }
+
+  return fakeReviews;
+}
+
+app.get('/api/reviews/:productId', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const realReviews = await database.collection("reviews")
+      .find({ product_id: req.params.productId, status: 'approved', is_active: true })
+      .sort({ created_at: -1 })
+      .toArray();
+
+    let productName = "product";
+    if (ObjectId.isValid(req.params.productId)) {
+      const pObj = await database.collection("products").findOne({ _id: new ObjectId(req.params.productId) });
+      if (pObj) productName = pObj.name;
+    }
+
+    const fakeReviews = getFakeReviewsForProduct(req.params.productId, productName);
+    const combined = [...realReviews, ...fakeReviews];
+
+    res.json(combined.map(r => ({
+      id: r._id.toString(),
+      product_id: r.product_id,
+      customer_name: r.customer_name,
+      rating: r.rating,
+      comment: r.comment,
+      images: r.images || [],
+      date: r.date || new Date(r.created_at).toLocaleDateString()
+    })));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.get('/api/reviews/:productId/summary', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const realReviews = await database.collection("reviews")
+      .find({ product_id: req.params.productId, status: 'approved', is_active: true })
+      .toArray();
+
+    let productName = "product";
+    if (ObjectId.isValid(req.params.productId)) {
+      const pObj = await database.collection("products").findOne({ _id: new ObjectId(req.params.productId) });
+      if (pObj) productName = pObj.name;
+    }
+
+    const fakeReviews = getFakeReviewsForProduct(req.params.productId, productName);
+    const reviews = [...realReviews, ...fakeReviews];
+
+    const total_reviews = reviews.length;
+    let sum = 0;
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+
+    reviews.forEach(r => {
+      sum += r.rating;
+      const roundedRating = Math.round(r.rating);
+      if (distribution[roundedRating] !== undefined) {
+        distribution[roundedRating]++;
+      }
+    });
+
+    const average_rating = total_reviews > 0 ? Number((sum / total_reviews).toFixed(1)) : 0;
+
+    const breakdown = {};
+    for (let i = 5; i >= 1; i--) {
+      const count = distribution[i];
+      const percentage = total_reviews > 0 ? Math.round((count / total_reviews) * 100) : 0;
+      breakdown[i] = { count, percentage };
+    }
+
+    res.json({ average_rating, total_reviews, breakdown });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── ADMIN REVIEWS ────────────────────────────────
+app.get('/api/admin/reviews', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { product_id, status } = req.query;
+    const filter = {};
+    if (product_id) filter.product_id = product_id;
+    if (status && status !== 'all') filter.status = status;
+
+    const reviews = await database.collection("reviews")
+      .find(filter)
+      .sort({ created_at: -1 })
+      .toArray();
+
+    // Fetch unique product names to display to admin
+    const productIds = [...new Set(reviews.map(r => r.product_id))];
+    const products = await database.collection("products")
+      .find({ _id: { $in: productIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id)) } })
+      .project({ _id: 1, name: 1 })
+      .toArray();
+    const productMap = new Map(products.map(p => [p._id.toString(), p.name]));
+
+    res.json(reviews.map(r => ({
+      id: r._id.toString(),
+      product_id: r.product_id,
+      product_name: productMap.get(r.product_id) || 'Unknown Product',
+      customer_name: r.customer_name,
+      rating: r.rating,
+      comment: r.comment,
+      images: r.images || [],
+      status: r.status || 'pending',
+      is_active: r.is_active !== false,
+      created_at: r.created_at,
+      date: new Date(r.created_at).toLocaleDateString()
+    })));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.get('/api/admin/reviews/pending-count', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const count = await database.collection("reviews").countDocuments({ status: 'pending' });
+    res.json({ pending_count: count });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.put('/api/admin/reviews/:reviewId/approve', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.reviewId)) return res.status(400).json({ error: 'Invalid review ID' });
+    const database = await connectDB();
+    await database.collection("reviews").updateOne(
+      { _id: new ObjectId(req.params.reviewId) },
+      { $set: { status: 'approved', updated_at: new Date() } }
+    );
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.put('/api/admin/reviews/:reviewId/reject', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.reviewId)) return res.status(400).json({ error: 'Invalid review ID' });
+    const database = await connectDB();
+    await database.collection("reviews").updateOne(
+      { _id: new ObjectId(req.params.reviewId) },
+      { $set: { status: 'rejected', updated_at: new Date() } }
+    );
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.put('/api/admin/reviews/:reviewId/toggle-active', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.reviewId)) return res.status(400).json({ error: 'Invalid review ID' });
+    const database = await connectDB();
+    const review = await database.collection("reviews").findOne({ _id: new ObjectId(req.params.reviewId) });
+    if (!review) return res.status(404).json({ error: 'Review not found' });
+
+    await database.collection("reviews").updateOne(
+      { _id: new ObjectId(req.params.reviewId) },
+      { $set: { is_active: !review.is_active, updated_at: new Date() } }
+    );
+    res.json({ success: true, is_active: !review.is_active });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.delete('/api/admin/reviews/:reviewId', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.reviewId)) return res.status(400).json({ error: 'Invalid review ID' });
+    const database = await connectDB();
+    await database.collection("reviews").deleteOne({ _id: new ObjectId(req.params.reviewId) });
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC DISCOUNTS ─────────────────────────────
+app.get('/api/discounts/:productId', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const now = new Date();
+    const discount = await database.collection("timed_discounts").findOne({
+      product_id: req.params.productId,
+      start_time: { $lte: now }, end_time: { $gt: now }, cancelled: { $ne: true },
+    });
+    if (!discount) return res.json({ active: false });
+    res.json({
+      active: true, id: discount._id.toString(),
+      discount_percent: discount.discount_percent,
+      start_time: discount.start_time, end_time: discount.end_time,
+    });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── ADMIN DISCOUNTS ──────────────────────────────
+app.get('/api/admin/discounts', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const now = new Date();
+    const discounts = await database.collection("timed_discounts")
+      .find({ cancelled: { $ne: true } }).sort({ created_at: -1 }).toArray();
+    const productIds = [...new Set(discounts.map(d => d.product_id))];
+    const products = await database.collection("products")
+      .find({ _id: { $in: productIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id)) } })
+      .project({ _id: 1, name: 1, slug: 1, price: 1 }).toArray();
+    const productMap = new Map(products.map(p => [p._id.toString(), p]));
+    res.json(discounts.map(d => {
+      const p = productMap.get(d.product_id) || {};
+      const startTime = new Date(d.start_time); const endTime = new Date(d.end_time);
+      let status = 'scheduled';
+      if (now >= startTime && now < endTime) status = 'active';
+      else if (now >= endTime) status = 'expired';
+      return {
+        id: d._id.toString(), product_id: d.product_id,
+        product_name: p.name || 'Unknown', product_slug: p.slug || '', product_price: p.price || 0,
+        discount_percent: d.discount_percent, start_time: d.start_time, end_time: d.end_time,
+        status, created_at: d.created_at,
+      };
+    }));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.post('/api/admin/discounts', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { product_id, discount_percent, start_time, end_time } = req.body;
+    if (!product_id || !discount_percent || !start_time || !end_time)
+      return res.status(400).json({ error: 'All fields required' });
+    const result = await database.collection("timed_discounts").insertOne({
+      product_id, discount_percent: Number(discount_percent),
+      start_time: new Date(start_time), end_time: new Date(end_time),
+      cancelled: false, created_at: new Date(),
+    });
+    res.json({ success: true, id: result.insertedId.toString() });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.delete('/api/admin/discounts/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid ID' });
+    const database = await connectDB();
+    await database.collection("timed_discounts").updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { cancelled: true, cancelled_at: new Date() } }
+    );
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── PUBLIC SALES DATA ────────────────────────────
+app.get('/api/sales-data/:productId', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const settings = await database.collection("app_settings").findOne({ _id: "global" });
+    const globalEnabled = settings?.sales_graph_enabled_global !== false;
+    const perProductDisabled = settings?.sales_graph_disabled_products?.includes(req.params.productId);
+    if (!globalEnabled || perProductDisabled) return res.json({ enabled: false });
+    const now = new Date();
+    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+    const weekStart = new Date(now); weekStart.setDate(now.getDate() - 6); weekStart.setHours(0, 0, 0, 0);
+    const todayAgg = await database.collection("orders").aggregate([
+      { $match: { created_at: { $gte: todayStart }, 'items.product_id': req.params.productId } },
+      { $unwind: '$items' },
+      { $match: { 'items.product_id': req.params.productId } },
+      { $group: { _id: null, units: { $sum: '$items.quantity' }, revenue: { $sum: '$items.line_total' } } }
+    ]).toArray();
+    const weekOrders = await database.collection("orders").aggregate([
+      { $match: { created_at: { $gte: weekStart }, 'items.product_id': req.params.productId } },
+      { $unwind: '$items' },
+      { $match: { 'items.product_id': req.params.productId } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at', timezone: 'Asia/Karachi' } }, units: { $sum: '$items.quantity' }, revenue: { $sum: '$items.line_total' } } },
+      { $sort: { _id: 1 } }
+    ]).toArray();
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      const label = d.toLocaleDateString('en-PK', { weekday: 'short', timeZone: 'Asia/Karachi' });
+      const found = weekOrders.find(w => w._id === key);
+      days.push({ date: key, label, units: found?.units || 0, revenue: found?.revenue || 0 });
+    }
+    res.json({ enabled: true, today: { units: todayAgg[0]?.units || 0, revenue: todayAgg[0]?.revenue || 0 }, week: days });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ─── ADMIN SALES GRAPH SETTINGS ───────────────────
+app.put('/api/admin/sales-graph-settings', async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { global_enabled, disabled_products } = req.body;
+    await database.collection("app_settings").updateOne(
+      { _id: "global" },
+      { $set: { sales_graph_enabled_global: global_enabled, sales_graph_disabled_products: disabled_products || [], updated_at: new Date() } },
+      { upsert: true }
+    );
     res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });

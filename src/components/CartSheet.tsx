@@ -11,7 +11,7 @@ export function CartSheet() {
   const close = useCart((s) => s.close);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
-  const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const subtotal = useCart((s) => s.subtotal());
 
   return (
     <Sheet open={isOpen} onOpenChange={(o) => (o ? null : close())}>
@@ -79,7 +79,15 @@ export function CartSheet() {
                         </button>
                       </div>
                       <div className="text-sm font-semibold">
-                        Rs {(i.price * i.quantity).toLocaleString()}
+                        Rs {(() => {
+                          const qty2 = i.qty2_discount_percent !== undefined ? i.qty2_discount_percent : 3;
+                          const qty3 = i.qty3_discount_percent !== undefined ? i.qty3_discount_percent : 5;
+                          let disc = 0;
+                          if (i.quantity === 2) disc = qty2;
+                          else if (i.quantity >= 3) disc = qty3;
+                          const finalPrice = Math.round(i.price * (1 - disc / 100));
+                          return (finalPrice * i.quantity).toLocaleString();
+                        })()}
                       </div>
                     </div>
                   </div>

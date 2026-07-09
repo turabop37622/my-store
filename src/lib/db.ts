@@ -1,4 +1,6 @@
-export const API_URL = "https://breezygo-admin-backend.turabop37622.workers.dev";
+export const API_URL = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname.includes("192.168."))
+  ? "http://localhost:5000"
+  : "https://breezygo-admin-backend.turabop37622.workers.dev";
 
 export async function fetchFromApi(path: string, options?: RequestInit) {
   const res = await fetch(`${API_URL}${path}`, options);

@@ -78,7 +78,7 @@ export function Footer() {
                   Join the Club
                 </div>
                 <h3 className="text-2xl md:text-4xl font-black uppercase tracking-tighter">
-                  Unlock 20% OFF <br /> On Your First Order
+                  Unlock 5% OFF <br /> On Your First Order
                 </h3>
                 <p className="text-white/40 text-sm font-medium">
                   Be the first to know about new drops, exclusive sales, and tech news.

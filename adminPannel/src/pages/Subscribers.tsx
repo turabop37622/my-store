@@ -3,6 +3,11 @@ import { CheckCircle, Search, Mail } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
+function authAxios() {
+    const token = localStorage.getItem("admin_token");
+    return axios.create({ headers: { Authorization: `Bearer ${token}` } });
+}
+
 export default function Subscribers() {
     const [subscribers, setSubscribers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -11,7 +16,7 @@ export default function Subscribers() {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
     const fetchSubscribers = () => {
-        axios.get(`${backendUrl}/api/admin/subscribers`)
+        authAxios().get(`${backendUrl}/api/admin/subscribers`)
             .then(res => { setSubscribers(res.data); setLoading(false); })
             .catch(err => { console.error(err); setLoading(false); });
     };
@@ -20,7 +25,7 @@ export default function Subscribers() {
 
     const handleApprove = async (id: string) => {
         try {
-            await axios.post(`${backendUrl}/api/admin/subscribers/approve`, { id });
+            await authAxios().post(`${backendUrl}/api/admin/subscribers/approve`, { id });
             toast.success("Approved! Promo code sent to user.");
             fetchSubscribers();
         } catch (err: any) {
@@ -41,7 +46,7 @@ export default function Subscribers() {
                     <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">
                         Subscribers ({subscribers.length})
                     </h1>
-                    <p className="text-slate-500 mt-1">Approve to send 20% OFF promo code.</p>
+                    <p className="text-slate-500 mt-1">Approve to send 5% OFF promo code.</p>
                 </div>
                 <div className="relative w-full sm:w-72">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -69,9 +74,7 @@ export default function Subscribers() {
                         <tbody className="divide-y divide-slate-100 text-sm">
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-500">
-                                        No subscribers yet.
-                                    </td>
+                                    <td colSpan={5} className="p-8 text-center text-slate-500">No subscribers yet.</td>
                                 </tr>
                             )}
                             {filtered.map((s) => (
@@ -83,25 +86,18 @@ export default function Subscribers() {
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${s.status === 'approved'
-                                                ? 'bg-emerald-100 text-emerald-700'
-                                                : 'bg-amber-100 text-amber-700'
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${s.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                                             }`}>
                                             {s.status}
                                         </span>
                                     </td>
-                                    <td className="p-4 font-mono text-slate-600 text-xs">
-                                        {s.promo_code || '—'}
-                                    </td>
+                                    <td className="p-4 font-mono text-slate-600 text-xs">{s.promo_code || '—'}</td>
                                     <td className="p-4 text-slate-400 text-xs">{s.date}</td>
                                     <td className="p-4 text-right">
                                         {s.status === 'pending' ? (
-                                            <button
-                                                onClick={() => handleApprove(s.id)}
-                                                className="flex items-center gap-2 ml-auto px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors"
-                                            >
-                                                <CheckCircle size={14} />
-                                                Approve
+                                            <button onClick={() => handleApprove(s.id)}
+                                                className="flex items-center gap-2 ml-auto px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors">
+                                                <CheckCircle size={14} /> Approve
                                             </button>
                                         ) : (
                                             <span className="text-xs text-slate-400">Sent ✓</span>

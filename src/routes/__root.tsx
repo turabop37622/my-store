@@ -111,6 +111,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+import SupportButtons from "@/components/SupportButtons";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -120,6 +122,7 @@ function RootComponent() {
       <Outlet />
       <Footer />
       <CartSheet />
+      <SupportButtons />
     </QueryClientProvider>
   );
 }

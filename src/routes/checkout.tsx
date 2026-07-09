@@ -41,8 +41,15 @@ function Checkout() {
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
   const clear = useCart((s) => s.clear);
-
-  const baseSubtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const baseSubtotal = items.reduce((s, i) => {
+    const qty2 = i.qty2_discount_percent !== undefined ? i.qty2_discount_percent : 3;
+    const qty3 = i.qty3_discount_percent !== undefined ? i.qty3_discount_percent : 5;
+    let disc = 0;
+    if (i.quantity === 2) disc = qty2;
+    else if (i.quantity >= 3) disc = qty3;
+    const finalPrice = Math.round(i.price * (1 - disc / 100));
+    return s + finalPrice * i.quantity;
+  }, 0);
   const [discountCode, setDiscountCode] = useState("");
   const [discountApplied, setDiscountApplied] = useState(false);
   const [discountPercent, setDiscountPercent] = useState(0);
@@ -128,14 +135,22 @@ function Checkout() {
         postal_code: form.postal_code.trim() || null,
         notes: form.notes.trim() || null,
         discount_code: discountApplied ? discountCode.trim() : null,
-        items: items.map((i) => ({
-          product_id: i.product_id,
-          slug: i.slug,
-          name: i.name,
-          price: i.price,
-          quantity: i.quantity,
-          image_url: i.image_url,
-        })),
+        items: items.map((i) => {
+          const qty2 = i.qty2_discount_percent !== undefined ? i.qty2_discount_percent : 3;
+          const qty3 = i.qty3_discount_percent !== undefined ? i.qty3_discount_percent : 5;
+          let disc = 0;
+          if (i.quantity === 2) disc = qty2;
+          else if (i.quantity >= 3) disc = qty3;
+          const finalPrice = Math.round(i.price * (1 - disc / 100));
+          return {
+            product_id: i.product_id,
+            slug: i.slug,
+            name: i.name,
+            price: finalPrice,
+            quantity: i.quantity,
+            image_url: i.image_url,
+          };
+        }),
       });
       toast.success("Order successful!");
       clear();
@@ -151,7 +166,7 @@ function Checkout() {
   };
 
   // Order Summary block - reused on both mobile (top) and desktop (sidebar)
-  const OrderSummary = () => (
+  const renderOrderSummary = () => (
     <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 sm:p-8 shadow-sm">
       <h2 className="text-lg font-bold text-slate-800 mb-6">Order Summary</h2>
 
@@ -168,7 +183,17 @@ function Checkout() {
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
-              <div className="text-sm text-slate-500 mb-2">Rs {i.price.toLocaleString()}</div>
+              <div className="text-sm text-slate-500 mb-2">
+                Rs {(() => {
+                  const qty2 = i.qty2_discount_percent !== undefined ? i.qty2_discount_percent : 3;
+                  const qty3 = i.qty3_discount_percent !== undefined ? i.qty3_discount_percent : 5;
+                  let disc = 0;
+                  if (i.quantity === 2) disc = qty2;
+                  else if (i.quantity >= 3) disc = qty3;
+                  const finalPrice = Math.round(i.price * (1 - disc / 100));
+                  return finalPrice.toLocaleString();
+                })()}
+              </div>
               <div className="flex justify-between items-center">
                 <div className="flex items-center bg-white rounded-full p-0.5 border border-slate-200 shadow-sm w-fit">
                   <button type="button" onClick={() => setQty(i.product_id, i.quantity - 1)} className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all text-slate-600">
@@ -179,7 +204,17 @@ function Checkout() {
                     <Plus className="h-3 w-3" />
                   </button>
                 </div>
-                <div className="text-sm font-bold text-slate-900">Rs {(i.price * i.quantity).toLocaleString()}</div>
+                <div className="text-sm font-bold text-slate-900">
+                  Rs {(() => {
+                    const qty2 = i.qty2_discount_percent !== undefined ? i.qty2_discount_percent : 3;
+                    const qty3 = i.qty3_discount_percent !== undefined ? i.qty3_discount_percent : 5;
+                    let disc = 0;
+                    if (i.quantity === 2) disc = qty2;
+                    else if (i.quantity >= 3) disc = qty3;
+                    const finalPrice = Math.round(i.price * (1 - disc / 100));
+                    return (finalPrice * i.quantity).toLocaleString();
+                  })()}
+                </div>
               </div>
             </div>
           </div>
@@ -248,11 +283,6 @@ function Checkout() {
 
         <form onSubmit={onSubmit} className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-10 items-start">
 
-          {/* ORDER SUMMARY — shown ABOVE form on mobile, hidden on desktop */}
-          <div className="lg:hidden w-full">
-            <OrderSummary />
-          </div>
-
           {/* LEFT SIDE - Form */}
           <div className="lg:col-span-7 space-y-5 w-full">
             <div className="grid sm:grid-cols-2 gap-4">
@@ -312,6 +342,11 @@ function Checkout() {
               <Textarea className="min-h-[70px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Landmark or delivery instructions" />
             </div>
 
+            {/* ORDER SUMMARY — shown BELOW form on mobile, hidden on desktop */}
+            <div className="lg:hidden w-full mt-6">
+              {renderOrderSummary()}
+            </div>
+
             <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-4">
               <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
                 <Banknote className="h-5 w-5" />
@@ -330,7 +365,7 @@ function Checkout() {
           {/* RIGHT SIDE - Order Summary, only on desktop */}
           <aside className="hidden lg:block lg:col-span-5">
             <div className="sticky top-32">
-              <OrderSummary />
+              {renderOrderSummary()}
             </div>
           </aside>
         </form>

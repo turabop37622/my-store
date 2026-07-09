@@ -3,13 +3,18 @@ import { Mail, CheckCircle2, Trash2 } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
+function authAxios() {
+  const token = localStorage.getItem("admin_token");
+  return axios.create({ headers: { Authorization: `Bearer ${token}` } });
+}
+
 export default function Messages() {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchMessages = () => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-    axios.get(`${backendUrl}/api/admin/messages`)
+    authAxios().get(`${backendUrl}/api/admin/messages`)
       .then(res => { setMessages(res.data); setLoading(false); })
       .catch(err => { console.error(err); setLoading(false); });
   };
@@ -19,7 +24,7 @@ export default function Messages() {
   const markAsRead = async (id: string) => {
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-      await axios.post(`${backendUrl}/api/admin/messages`, { id });
+      await authAxios().post(`${backendUrl}/api/admin/messages`, { id });
       toast.success("Marked as read!");
       fetchMessages();
     } catch { toast.error("Failed to update."); }
@@ -29,7 +34,7 @@ export default function Messages() {
     if (!confirm("Delete this message?")) return;
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-      await axios.delete(`${backendUrl}/api/admin/messages/${id}`);
+      await authAxios().delete(`${backendUrl}/api/admin/messages/${id}`);
       toast.success("Message deleted!");
       fetchMessages();
     } catch { toast.error("Failed to delete."); }
@@ -43,7 +48,7 @@ export default function Messages() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">
-          Messages 
+          Messages
           {unreadCount > 0 && <span className="ml-2 text-sm bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full font-bold">{unreadCount} new</span>}
         </h1>
         <p className="text-slate-500 mt-1">Contact form messages from customers.</p>
