@@ -77,92 +77,112 @@ function Checkout() {
     }
 
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        let fullAddress = "";
-        let finalCity = "";
-        let postcode = "";
 
-        // Method 1: Try OpenStreetMap Nominatim first (very detailed, exact street address)
+    const successCallback = async (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      let fullAddress = "";
+      let finalCity = "";
+      let postcode = "";
+
+      // Try OpenStreetMap Nominatim first (highly detailed)
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+          {
+            headers: {
+              "Accept-Language": "en",
+            }
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const addr = data.address || {};
+          const cityVal = addr.city || addr.town || addr.village || addr.state || "";
+          
+          fullAddress = data.display_name || "";
+          finalCity = cityVal;
+          postcode = addr.postcode || "";
+        }
+      } catch (err) {
+        console.warn("Nominatim lookup failed, trying BigDataCloud...", err);
+      }
+
+      // Try BigDataCloud fallback (simpler details)
+      if (!fullAddress) {
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-            {
-              headers: {
-                "Accept-Language": "en",
-              }
-            }
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
           );
           if (response.ok) {
             const data = await response.json();
-            const addr = data.address || {};
-            const cityVal = addr.city || addr.town || addr.village || addr.state || "";
-            
-            // Use display_name directly if available for the most precise address details
-            fullAddress = data.display_name || "";
-            finalCity = cityVal;
-            postcode = addr.postcode || "";
+            const parts = [
+              data.locality || "",
+              data.principalSubdivision || "",
+              data.countryName || ""
+            ].filter(Boolean);
+            fullAddress = parts.join(", ");
+            finalCity = data.city || data.locality || "";
+            postcode = data.postcode || "";
           }
-        } catch (err) {
-          console.warn("Nominatim lookup failed, trying BigDataCloud...", err);
+        } catch (e) {
+          console.error("BigDataCloud lookup failed too", e);
+        }
+      }
+
+      if (fullAddress) {
+        const cleanCity = finalCity.replace(" Cantonment", "").trim();
+        const matchedCity = PAKISTAN_CITIES.find(
+          c => c.toLowerCase() === cleanCity.toLowerCase() || 
+               c.toLowerCase().includes(cleanCity.toLowerCase()) ||
+               cleanCity.toLowerCase().includes(c.toLowerCase())
+        ) || "";
+
+        let finalPostcode = postcode;
+        if (!finalPostcode && matchedCity) {
+          const lowCity = matchedCity.toLowerCase();
+          if (lowCity === "lahore") finalPostcode = "54000";
+          else if (lowCity === "karachi") finalPostcode = "74000";
+          else if (lowCity === "islamabad") finalPostcode = "44000";
+          else if (lowCity === "rawalpindi") finalPostcode = "46000";
+          else if (lowCity === "faisalabad") finalPostcode = "38000";
+          else if (lowCity === "multan") finalPostcode = "60000";
+          else if (lowCity === "peshawar") finalPostcode = "25000";
+          else if (lowCity === "quetta") finalPostcode = "87300";
+          else if (lowCity === "sialkot") finalPostcode = "51310";
+          else if (lowCity === "gujranwala") finalPostcode = "52250";
         }
 
-        // Method 2: Fallback to BigDataCloud reverse geocode API (simpler locality details)
-        if (!fullAddress) {
-          try {
-            const response = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-            );
-            if (response.ok) {
-              const data = await response.json();
-              const parts = [
-                data.locality || "",
-                data.principalSubdivision || "",
-                data.countryName || ""
-              ].filter(Boolean);
-              fullAddress = parts.join(", ");
-              finalCity = data.city || data.locality || "";
-              postcode = data.postcode || "";
-            }
-          } catch (e) {
-            console.error("BigDataCloud lookup failed too", e);
-          }
-        }
+        setForm(prev => ({
+          ...prev,
+          address: fullAddress,
+          city: matchedCity || prev.city,
+          postal_code: finalPostcode || prev.postal_code || ""
+        }));
 
-        if (fullAddress) {
-          const cleanCity = finalCity.replace(" Cantonment", "").trim();
-          const matchedCity = PAKISTAN_CITIES.find(
-            c => c.toLowerCase() === cleanCity.toLowerCase() || 
-                 c.toLowerCase().includes(cleanCity.toLowerCase()) ||
-                 cleanCity.toLowerCase().includes(c.toLowerCase())
-          ) || "";
+        toast.success("Location auto-filled! Please review and complete your details.");
+      } else {
+        toast.error("Unable to resolve address. Please enter your address manually.");
+      }
+      setLocating(false);
+    };
 
-          setForm(prev => ({
-            ...prev,
-            address: fullAddress,
-            city: matchedCity || prev.city,
-            postal_code: postcode || prev.postal_code || ""
-          }));
-
-          toast.success("Location auto-filled! Please review and complete your details.");
-        } else {
-          toast.error("Unable to resolve address. Please enter your address manually.");
-        }
-        setLocating(false);
+    // Attempt high accuracy targeting first (ideal for mobile devices with physical GPS chips)
+    navigator.geolocation.getCurrentPosition(
+      successCallback,
+      (err) => {
+        console.warn("High accuracy geolocation timed out or failed, trying low accuracy...", err);
+        // Fallback: Attempt low accuracy targeting (faster, works on desktops/laptops using router IP)
+        navigator.geolocation.getCurrentPosition(
+          successCallback,
+          (lowAccErr) => {
+            console.error("Low accuracy geolocation failed too:", lowAccErr);
+            toast.error("Location request unavailable. Please enter address manually.");
+            setLocating(false);
+          },
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
+        );
       },
-      (error) => {
-        console.error("Geolocation Error details:", error);
-        if (error.code === 1) {
-          toast.error("Location permission denied. Please enter address manually.");
-        } else if (error.code === 2) {
-          toast.error("Location position unavailable. Please enter address manually.");
-        } else {
-          toast.error("Location request timed out. Please enter address manually.");
-        }
-        setLocating(false);
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
     );
   };
 
