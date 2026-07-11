@@ -266,14 +266,14 @@ async function sendPromoEmail(email, promoCode, expiresAt) {
 }
 
 // ─── AUTH ──────────────────────────────────────────
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Ahlegand5712@";
+
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
-  const adminPass = process.env.ADMIN_PASSWORD || "breezy2026";
-  if (password === adminPass) {
-    res.json({ success: true, token: "admin-session-" + Date.now() });
-  } else {
-    res.status(401).json({ error: "Invalid password" });
+  if (password === ADMIN_PASSWORD) {
+    return res.json({ success: true, token: "admin-session-" + Date.now() });
   }
+  return res.status(401).json({ error: "Invalid password" });
 });
 
 // ─── AUTH MIDDLEWARE ──────────────────────────────
@@ -451,34 +451,45 @@ app.post('/api/support-chat', async (req, res) => {
 
     const finalSystemPrompt = `${systemPromptOverride}${orderInfo ? `\n\nCUSTOMER ORDER CONTEXT:\n${orderInfo}` : ""}`;
 
-    // Clean messages for Gemini API (roles must be 'user' or 'model')
-    // Inject system prompt as the first user/model exchange since
-    // system_instruction is not supported in the v1 REST API.
-    const geminiMessages = [
-      { role: 'user', parts: [{ text: finalSystemPrompt }] },
-      { role: 'model', parts: [{ text: 'Understood. I will follow these instructions.' }] }
-    ];
+    // Clean and alternate messages for Gemini API
+    const geminiMessages = [];
     for (const m of messages) {
       if (m.role === 'user' || m.role === 'assistant') {
-        // Skip leading assistant messages
-        if (geminiMessages.length === 2 && m.role === 'assistant') {
-          continue;
+        const role = m.role === 'assistant' ? 'model' : 'user';
+        const text = m.content || "";
+        if (!text.trim()) continue;
+
+        if (geminiMessages.length > 0 && geminiMessages[geminiMessages.length - 1].role === role) {
+          geminiMessages[geminiMessages.length - 1].parts[0].text += "\n" + text;
+        } else {
+          geminiMessages.push({
+            role: role,
+            parts: [{ text: text }]
+          });
         }
-        geminiMessages.push({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }]
-        });
       }
     }
 
-    // Call Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    // Ensure the conversation starts with a user message
+    while (geminiMessages.length > 0 && geminiMessages[0].role === 'model') {
+      geminiMessages.shift();
+    }
+
+    if (geminiMessages.length === 0) {
+      geminiMessages.push({ role: 'user', parts: [{ text: 'Hello' }] });
+    }
+
+    // Call Gemini API using systemInstruction
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        contents: geminiMessages
+        contents: geminiMessages,
+        systemInstruction: {
+          parts: [{ text: finalSystemPrompt }]
+        }
       })
     });
 
@@ -531,6 +542,16 @@ app.post('/api/orders', async (req, res) => {
       .find({ _id: { $in: objectIds }, is_active: true })
       .toArray();
 
+    const now = new Date();
+    const timedDiscounts = await database.collection("timed_discounts")
+      .find({
+        product_id: { $in: items.map(i => i.product_id) },
+        start_time: { $lte: now },
+        end_time: { $gt: now },
+        cancelled: { $ne: true }
+      }).toArray();
+    const discountMap = new Map(timedDiscounts.map(d => [d.product_id, d.discount_percent]));
+
     const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
     const trustedItems = items.map(i => {
       const p = productMap.get(i.product_id);
@@ -546,7 +567,12 @@ app.post('/api/orders', async (req, res) => {
         discountPercent = qty3_discount;
       }
 
-      const finalPrice = Math.round(Number(p.price) * (1 - discountPercent / 100));
+      const timedDiscountPercent = discountMap.get(p._id.toString()) || 0;
+      const basePrice = timedDiscountPercent > 0
+        ? Math.round(Number(p.price) * (1 - timedDiscountPercent / 100))
+        : Number(p.price);
+
+      const finalPrice = Math.round(basePrice * (1 - discountPercent / 100));
 
       return {
         product_id: p._id.toString(),
@@ -838,7 +864,8 @@ app.get('/api/admin/products', async (req, res) => {
       details: p.details || [],
       images: p.images || (p.image_url ? [p.image_url] : []),
       qty2_discount_percent: p.qty2_discount_percent !== undefined ? p.qty2_discount_percent : 3,
-      qty3_discount_percent: p.qty3_discount_percent !== undefined ? p.qty3_discount_percent : 5
+      qty3_discount_percent: p.qty3_discount_percent !== undefined ? p.qty3_discount_percent : 5,
+      sales_baseline: p.sales_baseline || 0
     })));
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -846,7 +873,7 @@ app.get('/api/admin/products', async (req, res) => {
 app.post('/api/admin/products', async (req, res) => {
   try {
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock, details, images, qty2_discount_percent, qty3_discount_percent } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline } = req.body;
     const result = await database.collection("products").insertOne({
       name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
       price: Number(price), original_price: original_price ? Number(original_price) : null,
@@ -855,7 +882,8 @@ app.post('/api/admin/products', async (req, res) => {
       rating: 4.5, created_at: new Date(), details: details || [],
       images: images || [],
       qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
-      qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5
+      qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
+      sales_baseline: Number(sales_baseline) || 0
     });
     res.json({ success: true, id: result.insertedId.toString() });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -867,7 +895,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       return res.status(400).json({ error: "Invalid product ID" });
     }
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline } = req.body;
     const updateDoc = {
       name,
       price: Number(price),
@@ -879,6 +907,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       details: details || [],
       qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
       qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
+      sales_baseline: Number(sales_baseline) || 0,
       updated_at: new Date()
     };
     if (images) updateDoc.images = images;
@@ -1396,6 +1425,24 @@ app.get('/api/sales-data/:productId', async (req, res) => {
     const globalEnabled = settings?.sales_graph_enabled_global !== false;
     const perProductDisabled = settings?.sales_graph_disabled_products?.includes(req.params.productId);
     if (!globalEnabled || perProductDisabled) return res.json({ enabled: false });
+
+    // Fetch product to get sales baselines
+    let baselines = [0, 0, 0, 0, 0, 0, 0];
+    if (ObjectId.isValid(req.params.productId)) {
+      const product = await database.collection("products").findOne({ _id: new ObjectId(req.params.productId) });
+      if (product && product.sales_baseline) {
+        const valStr = String(product.sales_baseline);
+        if (valStr.includes(',')) {
+          baselines = valStr.split(',').map(n => Number(n.trim()) || 0);
+        } else {
+          const singleNum = Number(valStr) || 0;
+          baselines = [0, 0, 0, 0, 0, 0, singleNum];
+        }
+      }
+    }
+    while (baselines.length < 7) baselines.unshift(0);
+    if (baselines.length > 7) baselines = baselines.slice(0, 7);
+
     const now = new Date();
     const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
     const weekStart = new Date(now); weekStart.setDate(now.getDate() - 6); weekStart.setHours(0, 0, 0, 0);
@@ -1418,9 +1465,10 @@ app.get('/api/sales-data/:productId', async (req, res) => {
       const key = d.toISOString().split('T')[0];
       const label = d.toLocaleDateString('en-PK', { weekday: 'short', timeZone: 'Asia/Karachi' });
       const found = weekOrders.find(w => w._id === key);
-      days.push({ date: key, label, units: found?.units || 0, revenue: found?.revenue || 0 });
+      let units = (found?.units || 0) + baselines[6 - i];
+      days.push({ date: key, label, units, revenue: found?.revenue || 0 });
     }
-    res.json({ enabled: true, today: { units: todayAgg[0]?.units || 0, revenue: todayAgg[0]?.revenue || 0 }, week: days });
+    res.json({ enabled: true, today: { units: (todayAgg[0]?.units || 0) + baselines[6], revenue: todayAgg[0]?.revenue || 0 }, week: days });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

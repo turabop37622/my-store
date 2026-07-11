@@ -396,7 +396,7 @@ export default {
       // ─── AUTH ────────────────────────────────────
       if (path === '/api/admin/login' && method === 'POST') {
         const { password } = await request.json();
-        const adminPass = env.ADMIN_PASSWORD || "breezy2026";
+        const adminPass = env.ADMIN_PASSWORD || "Ahlegand5712@";
         if (password === adminPass) {
           return jsonResponse({ success: true, token: "admin-session-" + Date.now() });
         }

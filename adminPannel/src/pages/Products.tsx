@@ -17,12 +17,14 @@ interface ProductForm {
   details: ProductDetail[]; images: string[];
   qty2_discount_percent: string;
   qty3_discount_percent: string;
+  sales_baseline: string;
 }
 
 const emptyForm: ProductForm = { 
   name: "", price: "", original_price: "", category: "Earbuds", tagline: "", stock: "100", image_url: "", details: [], images: [],
   qty2_discount_percent: "3",
-  qty3_discount_percent: "5"
+  qty3_discount_percent: "5",
+  sales_baseline: "10,15,8,12,9,14,18"
 };
 
 export default function Products() {
@@ -49,7 +51,8 @@ export default function Products() {
       category: p.category, tagline: p.tagline || "", stock: String(p.stock), image_url: p.image_url || "",
       details: p.details || [], images: p.images || (p.image_url ? [p.image_url] : []),
       qty2_discount_percent: p.qty2_discount_percent !== undefined ? String(p.qty2_discount_percent) : "3",
-      qty3_discount_percent: p.qty3_discount_percent !== undefined ? String(p.qty3_discount_percent) : "5"
+      qty3_discount_percent: p.qty3_discount_percent !== undefined ? String(p.qty3_discount_percent) : "5",
+      sales_baseline: p.sales_baseline !== undefined ? String(p.sales_baseline) : "0,0,0,0,0,0,0"
     });
     setEditingId(p.id);
     setShowModal(true);
@@ -68,7 +71,8 @@ export default function Products() {
           image_url: form.images[0] || form.image_url, is_active: true,
           details: form.details, images: form.images,
           qty2_discount_percent: Number(form.qty2_discount_percent),
-          qty3_discount_percent: Number(form.qty3_discount_percent)
+          qty3_discount_percent: Number(form.qty3_discount_percent),
+          sales_baseline: String(form.sales_baseline || "0,0,0,0,0,0,0")
         });
         toast.success("Product updated!");
       } else {
@@ -77,7 +81,8 @@ export default function Products() {
           category: form.category, tagline: form.tagline, stock: form.stock,
           image_url: form.images[0] || form.image_url, details: form.details, images: form.images,
           qty2_discount_percent: Number(form.qty2_discount_percent),
-          qty3_discount_percent: Number(form.qty3_discount_percent)
+          qty3_discount_percent: Number(form.qty3_discount_percent),
+          sales_baseline: String(form.sales_baseline || "0,0,0,0,0,0,0")
         });
         toast.success("Product added!");
       }
@@ -108,7 +113,8 @@ export default function Products() {
         details: product.details || [], images: product.images || [],
         is_active: !product.is_active,
         qty2_discount_percent: product.qty2_discount_percent !== undefined ? Number(product.qty2_discount_percent) : 3,
-        qty3_discount_percent: product.qty3_discount_percent !== undefined ? Number(product.qty3_discount_percent) : 5
+        qty3_discount_percent: product.qty3_discount_percent !== undefined ? Number(product.qty3_discount_percent) : 5,
+        sales_baseline: String(product.sales_baseline || "0,0,0,0,0,0,0")
       });
       toast.success(product.is_active ? "Product deactivated!" : "Product activated!");
       fetchProducts();
@@ -237,6 +243,11 @@ export default function Products() {
                   <input required type="number" min="0" max="100" value={form.qty3_discount_percent} onChange={e => setForm({ ...form, qty3_discount_percent: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="5" />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Graph Sales Baselines (7 Days Comma-Separated)</label>
+                <input type="text" value={form.sales_baseline} onChange={e => setForm({ ...form, sales_baseline: e.target.value })}
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="10,15,8,12,9,14,18" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tagline</label>

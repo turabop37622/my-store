@@ -37,7 +37,6 @@ function Shop() {
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: typeof window !== "undefined",
   });
 
   const filtered = (() => {

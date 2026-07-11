@@ -69,6 +69,7 @@ function ProductPage() {
   const [selectedColor, setSelectedColor] = useState(LUNA_COLOR_VARIANTS[0]);
   const [activeTab, setActiveTab] = useState<"features" | "specs" | "reviews" | "policy">("features");
   const [isLiked, setIsLiked] = useState(false);
+  const [deliveryCity, setDeliveryCity] = useState<"lahore" | "other">("lahore");
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -122,14 +123,14 @@ function ProductPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white pt-32 pb-20">
+      <div className="min-h-screen bg-white text-neutral-900 pt-32 pb-20">
         <div className="mx-auto max-w-[1400px] px-4 md:px-10 grid md:grid-cols-2 gap-12">
-          <Skeleton className="aspect-square rounded-3xl bg-slate-900" />
+          <Skeleton className="aspect-square rounded-3xl bg-slate-100" />
           <div className="space-y-6">
-            <Skeleton className="h-6 w-1/4 bg-slate-900" />
-            <Skeleton className="h-12 w-3/4 bg-slate-900" />
-            <Skeleton className="h-6 w-1/3 bg-slate-900" />
-            <Skeleton className="h-32 w-full bg-slate-900" />
+            <Skeleton className="h-6 w-1/4 bg-slate-100" />
+            <Skeleton className="h-12 w-3/4 bg-slate-100" />
+            <Skeleton className="h-6 w-1/3 bg-slate-100" />
+            <Skeleton className="h-32 w-full bg-slate-100" />
           </div>
         </div>
       </div>
@@ -138,7 +139,7 @@ function ProductPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center flex-col gap-6 py-40">
+      <div className="min-h-screen bg-white text-neutral-900 flex items-center justify-center flex-col gap-6 py-40">
         <h2 className="text-2xl font-bold">Product not found</h2>
         <Link to="/shop" className="text-[#00a859] hover:underline flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" /> Back to Shop
@@ -370,8 +371,8 @@ Please confirm my order.`;
               </div>
             )}
  
-            {/* Float Highlights Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6">
+            {/* Float Highlights Grid — Hidden on Mobile, Visible on Desktop */}
+            <div className="hidden lg:grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6">
               {[
                 { icon: Compass, title: "1.39\" Screen", desc: "HD Display" },
                 { icon: Droplets, title: "IP67 Water", desc: "Dust & Sweat Resistant" },
@@ -586,7 +587,7 @@ Please confirm my order.`;
                         onClick={() => setQty(deal.qty)}
                         className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-left ${
                           isActive
-                            ? "border-neutral-900 bg-neutral-900 text-white shadow-lg"
+                            ? "border-[#00a651] bg-[#00a651] text-white shadow-lg"
                             : "border-neutral-150 bg-white hover:border-neutral-300 text-neutral-800"
                         }`}
                       >
@@ -621,116 +622,180 @@ Please confirm my order.`;
                 </div>
               </div>
             </div>
+
+            {/* Float Highlights Grid — Visible on Mobile, Hidden on Desktop */}
+            <div className="grid lg:hidden grid-cols-2 sm:grid-cols-3 gap-4 pt-6">
+              {[
+                { icon: Compass, title: "1.39\" Screen", desc: "HD Display" },
+                { icon: Droplets, title: "IP67 Water", desc: "Dust & Sweat Resistant" },
+                { icon: Cpu, title: "BT Calling", desc: "HD Built-in Mic" },
+                { icon: Sparkles, title: "Health Suite", desc: "Heart Rate & SpO2" },
+                { icon: Bell, title: "Smart Notify", desc: "Quick alerts" },
+                { icon: Calendar, title: "7-Day Battery", desc: "Magnetic Charging" },
+              ].map((h, i) => (
+                <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-neutral-100 bg-neutral-50/50">
+                  <div className="h-10 w-10 rounded-xl bg-neutral-100 text-neutral-700 flex items-center justify-center flex-shrink-0">
+                    <h.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-neutral-800 leading-tight">{h.title}</h4>
+                    <p className="text-[10px] text-neutral-500 leading-normal">{h.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
           </div>
         </div>
 
         {/* ===== Full-Width Landscape Delivery & Trust Card ===== */}
-        <div className="mt-8 rounded-2xl border border-neutral-100 overflow-hidden shadow-sm">
-          {/* Dark header strip */}
-          <div className="bg-neutral-900 flex items-center justify-between px-6 py-3.5">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                <Truck className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-white font-black text-sm tracking-tight">Fast & Free Delivery</span>
-              <span className="text-neutral-500 text-[10px] font-medium">· Nationwide Cash on Delivery</span>
-            </div>
-            <span className="text-[9px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-400/10 border border-emerald-500/20 px-3 py-1 rounded-full">
-              🚀 Free Shipping
-            </span>
-          </div>
-
-          {/* 5-column landscape body */}
-          <div className="grid grid-cols-5 divide-x divide-neutral-100 bg-white">
-
-            {/* Col 1–2: ETA + city toggle + steps */}
-            <div className="col-span-2 px-6 py-5 flex flex-col justify-between gap-4 bg-neutral-50/50">
-              {/* City toggle row */}
-              <div className="flex items-center gap-3">
-                <MapPin className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
-                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Delivery To</span>
-                <div className="flex bg-white border border-neutral-200 rounded-lg overflow-hidden ml-auto shadow-sm">
-                  <button type="button" className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 border-r border-neutral-200">Lahore</button>
-                  <button type="button" className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-neutral-500 hover:bg-neutral-50 transition-colors">Other Cities</button>
-                </div>
-              </div>
-
-              {/* ETA headline */}
-              <div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-xl">⚡</span>
-                  <span className="text-2xl font-black text-neutral-900 leading-none">Within 24–48 Hrs</span>
-                </div>
-                <div className="text-xs text-neutral-500 font-medium">Lahore orders • Express next-day dispatch</div>
-              </div>
-
-              {/* Step tracker */}
-              <div className="flex items-center gap-1">
-                {[
-                  { emoji: "📦", label: "Order Packed" },
-                  { emoji: "🚚", label: "On The Way" },
-                  { emoji: "🏠", label: "Delivered" },
-                ].map((step, i) => (
-                  <div key={step.label} className="flex items-center flex-1">
-                    <div className="flex flex-col items-center flex-1">
-                      <div className="h-9 w-9 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-base shadow-sm">
-                        {step.emoji}
-                      </div>
-                      <span className="text-[8px] text-neutral-500 font-bold mt-1.5 text-center leading-tight">{step.label}</span>
-                    </div>
-                    {i < 2 && (
-                      <div className="w-6 shrink-0 flex items-center justify-center mb-4">
-                        <div className="w-full border-t-2 border-dashed border-neutral-200" />
-                      </div>
-                    )}
+        <div className="mt-12 rounded-[2rem] border border-neutral-100/80 bg-gradient-to-br from-neutral-50/40 via-white to-white p-6 sm:p-8 shadow-sm relative overflow-hidden group/card">
+          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-72 h-72 bg-[#00a651]/5 rounded-full blur-[100px] pointer-events-none" />
+          
+          <div className="grid lg:grid-cols-12 gap-8 items-center">
+            {/* Delivery Timeline Block (left 6 columns) */}
+            <div className="lg:col-span-6 space-y-6 lg:border-r lg:border-neutral-100 lg:pr-8">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <Truck className="h-4 w-4" />
                   </div>
-                ))}
+                  <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Delivery Estimator</span>
+                </div>
+                
+                {/* Clean City Switcher */}
+                <div className="flex bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/50">
+                  <button 
+                    type="button" 
+                    onClick={() => setDeliveryCity("lahore")}
+                    className={`px-3.5 py-1 text-[9px] font-black uppercase tracking-wider transition-all rounded-md ${
+                      deliveryCity === "lahore" 
+                        ? "text-emerald-600 bg-white shadow-sm" 
+                        : "text-neutral-400 hover:text-neutral-900"
+                    }`}
+                  >
+                    Lahore
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setDeliveryCity("other")}
+                    className={`px-3.5 py-1 text-[9px] font-black uppercase tracking-wider transition-all rounded-md ${
+                      deliveryCity === "other" 
+                        ? "text-[#00a651] bg-white shadow-sm" 
+                        : "text-neutral-400 hover:text-neutral-900"
+                    }`}
+                  >
+                    Other Cities
+                  </button>
+                </div>
+              </div>
+
+              {/* Delivery ETA Display */}
+              <div className="space-y-1">
+                <h4 className="text-2xl font-black text-neutral-900 tracking-tight flex items-center gap-1.5">
+                  {deliveryCity === "lahore" ? (
+                    <>
+                      <span className="text-emerald-500">⚡</span> Within 24–48 Hours
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-purple-500">📦</span> 4–8 Business Days
+                    </>
+                  )}
+                </h4>
+                <p className="text-xs text-neutral-400 font-medium">
+                  {deliveryCity === "lahore" 
+                    ? "Lahore orders include express next-day dispatch" 
+                    : "Express shipping nationwide with cash on delivery"
+                  }
+                </p>
+              </div>
+
+              {/* Delivery Steps Timeline */}
+              <div className="relative pt-2">
+                <div className="absolute top-[18px] left-[10%] right-[10%] h-[2px] bg-neutral-100 -z-10" />
+                <div className="flex justify-between items-center text-center">
+                  {[
+                    { label: "Order Packed", desc: "Same day dispatch" },
+                    { label: "On The Way", desc: "Assigned to courier" },
+                    { label: "Delivered", desc: "COD at your doorstep" }
+                  ].map((step, i) => {
+                    const isCompleted = i === 0; // Highlight first step as completed/active
+                    return (
+                      <div key={step.label} className="flex flex-col items-center flex-1 relative">
+                        <div className={`h-9 w-9 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                          isCompleted 
+                            ? "bg-[#00a651] border-[#00a651] text-white shadow-lg shadow-[#00a651]/20 scale-110" 
+                            : "bg-white border-neutral-200 text-neutral-400"
+                        }`}>
+                          <span className="text-xs font-black">{i + 1}</span>
+                        </div>
+                        <span className="text-[10px] font-extrabold text-neutral-800 mt-2 block">{step.label}</span>
+                        <span className="text-[8px] text-neutral-400 font-medium mt-0.5 max-w-[80px] leading-tight block">{step.desc}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Col 3: COD */}
-            <div className="flex flex-col items-center justify-center py-6 px-4 text-center gap-2.5 hover:bg-emerald-50/50 transition-colors group cursor-default">
-              <div className="h-12 w-12 rounded-2xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors shadow-sm">
-                <Banknote className="h-6 w-6 text-emerald-700" />
-              </div>
-              <div>
-                <div className="text-sm font-extrabold text-neutral-800">COD Available</div>
-                <div className="text-[10px] text-neutral-400 font-medium mt-0.5">Pay when you receive</div>
-              </div>
-              <span className="text-[8px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">✓ Available</span>
-            </div>
+            {/* Trust Badges Block (right 6 columns) */}
+            <div className="lg:col-span-6 grid grid-cols-3 gap-4">
+              {[
+                { 
+                  icon: Banknote, 
+                  title: "COD Available", 
+                  desc: "Pay on receipt", 
+                  color: "emerald", 
+                  badge: "Safe" 
+                },
+                { 
+                  icon: ShieldCheck, 
+                  title: "7-Day Warranty", 
+                  desc: "Hassle-free replacement", 
+                  color: "blue", 
+                  badge: "Guaranteed" 
+                },
+                { 
+                  icon: Truck, 
+                  title: "Free Shipping", 
+                  desc: "All over Pakistan", 
+                  color: "purple", 
+                  badge: "Nationwide" 
+                }
+              ].map((item) => {
+                const Icon = item.icon;
+                const colors = {
+                  emerald: "bg-emerald-50 text-emerald-600 border-emerald-100/50 hover:bg-emerald-100/30",
+                  blue: "bg-blue-50 text-blue-600 border-blue-100/50 hover:bg-blue-100/30",
+                  purple: "bg-purple-50 text-purple-600 border-purple-100/50 hover:bg-purple-100/30",
+                }[item.color as "emerald" | "blue" | "purple"];
 
-            {/* Col 4: Warranty */}
-            <div className="flex flex-col items-center justify-center py-6 px-4 text-center gap-2.5 hover:bg-blue-50/50 transition-colors group cursor-default">
-              <div className="h-12 w-12 rounded-2xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors shadow-sm">
-                <ShieldCheck className="h-6 w-6 text-blue-700" />
-              </div>
-              <div>
-                <div className="text-sm font-extrabold text-neutral-800">7-Day Warranty</div>
-                <div className="text-[10px] text-neutral-400 font-medium mt-0.5">Hassle-free replacement</div>
-              </div>
-              <span className="text-[8px] font-extrabold text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">✓ Guaranteed</span>
+                return (
+                  <div 
+                    key={item.title}
+                    className="flex flex-col items-center text-center p-4 rounded-2xl bg-white border border-neutral-100 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300"
+                  >
+                    <div className={`h-11 w-11 rounded-xl flex items-center justify-center mb-3 transition-colors ${colors}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-0.5 mb-3">
+                      <h5 className="text-xs font-black text-neutral-800 leading-tight">{item.title}</h5>
+                      <p className="text-[9px] text-neutral-400 font-medium leading-tight">{item.desc}</p>
+                    </div>
+                    <span className="text-[8px] font-black uppercase tracking-wider bg-neutral-50 text-neutral-500 border border-neutral-200/50 px-2 py-0.5 rounded-full mt-auto">
+                      {item.badge}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-
-            {/* Col 5: Express */}
-            <div className="flex flex-col items-center justify-center py-6 px-4 text-center gap-2.5 hover:bg-purple-50/50 transition-colors group cursor-default">
-              <div className="h-12 w-12 rounded-2xl bg-purple-100 group-hover:bg-purple-200 flex items-center justify-center transition-colors shadow-sm">
-                <Truck className="h-6 w-6 text-purple-700" />
-              </div>
-              <div>
-                <div className="text-sm font-extrabold text-neutral-800">Free Shipping</div>
-                <div className="text-[10px] text-neutral-400 font-medium mt-0.5">All over Pakistan</div>
-              </div>
-              <span className="text-[8px] font-extrabold text-purple-600 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-full">✓ Nationwide</span>
-            </div>
-
           </div>
-
-          {/* Bottom ticker */}
-          <div className="bg-neutral-50 border-t border-neutral-100 px-6 py-2.5 flex items-center gap-3">
-            <span className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest">
-              ⚡ Lahore: 24–48 Hours &nbsp;·&nbsp; Other Cities: 4–8 Business Days &nbsp;·&nbsp; 100% Secure Packaging
-            </span>
+          
+          {/* Accent bottom bar info */}
+          <div className="mt-6 pt-4 border-t border-neutral-100 flex items-center justify-between text-[9px] font-extrabold text-neutral-400 uppercase tracking-widest">
+            <span>⚡ Delivery: Lahore 24-48 Hours | Other Cities 4-8 Days</span>
+            <span className="text-[#00a651]">● 100% Secure Packaging</span>
           </div>
         </div>
 

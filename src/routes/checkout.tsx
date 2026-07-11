@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { Trash2, Banknote, Minus, Plus, Loader2 } from "lucide-react";
+import { Trash2, Banknote, Minus, Plus, Loader2, MapPin } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const PAKISTAN_CITIES = [
@@ -68,6 +68,111 @@ function Checkout() {
     postal_code: "",
     notes: "",
   });
+  const [locating, setLocating] = useState(false);
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let fullAddress = "";
+        let finalCity = "";
+        let postcode = "";
+
+        // Method 1: Try BigDataCloud reverse geocode API (very fast, CORS friendly)
+        try {
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            const parts = [
+              data.locality || "",
+              data.principalSubdivision || "",
+              data.countryName || ""
+            ].filter(Boolean);
+            fullAddress = parts.join(", ");
+            finalCity = data.city || data.locality || "";
+            postcode = data.postcode || "";
+          }
+        } catch (e) {
+          console.warn("BigDataCloud lookup failed, trying Nominatim...", e);
+        }
+
+        // Method 2: Fallback to OpenStreetMap Nominatim
+        if (!fullAddress) {
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+              {
+                headers: {
+                  "Accept-Language": "en",
+                }
+              }
+            );
+            if (response.ok) {
+              const data = await response.json();
+              const addr = data.address || {};
+              const street = addr.road || addr.suburb || addr.neighbourhood || "";
+              const cityVal = addr.city || addr.town || addr.village || addr.state || "";
+              
+              const formattedAddressParts = [
+                addr.amenity || addr.building || "",
+                addr.house_number ? `House ${addr.house_number}` : "",
+                street,
+                addr.suburb || addr.subdivision || "",
+                addr.neighbourhood || ""
+              ].filter(Boolean);
+
+              fullAddress = formattedAddressParts.join(", ") || data.display_name || "";
+              finalCity = cityVal;
+              postcode = addr.postcode || "";
+            }
+          } catch (err) {
+            console.error("Nominatim lookup failed too", err);
+          }
+        }
+
+        if (fullAddress) {
+          const cleanCity = finalCity.replace(" Cantonment", "").trim();
+          const matchedCity = PAKISTAN_CITIES.find(
+            c => c.toLowerCase() === cleanCity.toLowerCase() || 
+                 c.toLowerCase().includes(cleanCity.toLowerCase()) ||
+                 cleanCity.toLowerCase().includes(c.toLowerCase())
+          ) || "";
+
+          setForm(prev => ({
+            ...prev,
+            address: fullAddress,
+            city: matchedCity || prev.city,
+            postal_code: postcode || prev.postal_code || ""
+          }));
+
+          toast.success("Location auto-filled! Please review and complete your details.");
+        } else {
+          toast.error("Unable to resolve address. Please enter your address manually.");
+        }
+        setLocating(false);
+      },
+      (error) => {
+        console.error("Geolocation Error details:", error);
+        if (error.code === 1) {
+          toast.error("Location permission denied. Please enter address manually.");
+        } else if (error.code === 2) {
+          toast.error("Location position unavailable. Please enter address manually.");
+        } else {
+          toast.error("Location request timed out. Please enter address manually.");
+        }
+        setLocating(false);
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+    );
+  };
 
   if (items.length === 0) {
     return (
@@ -313,7 +418,27 @@ function Checkout() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700">Complete Address</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-slate-700">Complete Address</Label>
+                <button
+                  type="button"
+                  onClick={handleGetLocation}
+                  disabled={locating}
+                  className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 transition-colors bg-transparent border-0 cursor-pointer"
+                >
+                  {locating ? (
+                    <>
+                      <Loader2 className="animate-spin h-3.5 w-3.5" />
+                      <span>Fetching Location...</span>
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span>Use My Current Location</span>
+                    </>
+                  )}
+                </button>
+              </div>
               <Textarea required className="min-h-[90px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="House #, Street, Area" />
             </div>
 

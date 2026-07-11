@@ -37,7 +37,6 @@ function Index() {
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: () => listProducts(),
-    enabled: typeof window !== "undefined",
   });
 
   const featured = (products ?? []).filter((p) => p?.is_featured);

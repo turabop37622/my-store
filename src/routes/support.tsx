@@ -21,7 +21,7 @@ export const Route = createFileRoute("/support")({
 function SupportPage() {
   const faqs = [
     { q: "What is the warranty on BreezyGo products?", a: "All our products come with a 7-day replacement warranty. If there is any technical issue with the product, we will replace it for you." },
-    { q: "How long does delivery take?", a: "24-48 hours in Karachi and 3-5 working days for the rest of Pakistan." },
+    { q: "How long does delivery take?", a: "24-48 hours in Lahore and 4-6 working days for the rest of Pakistan." },
     { q: "Is Cash on Delivery (COD) available in every city?", a: "Yes, we provide COD service across Pakistan." },
     { q: "How to cancel an order?", a: "As long as the order is not shipped, you can cancel it by contacting us via WhatsApp or email." }
   ];

@@ -56,7 +56,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-slate-600 text-xs mt-8">
-          Default password: <code className="text-slate-400">breezy2026</code>
+          Password: <code className="text-slate-400">Ahlegand5712@</code>
         </p>
       </div>
     </div>
