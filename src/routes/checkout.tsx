@@ -172,13 +172,16 @@ function Checkout() {
               else if (lowCity === "gujranwala") finalPostcode = "52250";
             }
 
+            const detectedLandmark = addr.amenity || addr.building || addr.shop || addr.tourism || addr.historic || addr.leisure || addr.place || addr.neighbourhood || addr.suburb || "";
+
             setForm(prev => ({
               ...prev,
               address: data.display_name || "",
               city: matchedCity || prev.city,
               postal_code: finalPostcode || prev.postal_code || "",
               latitude: position.lat,
-              longitude: position.lng
+              longitude: position.lng,
+              landmark: detectedLandmark || prev.landmark
             }));
             
             toast.success("Location updated based on pinned marker!");
@@ -266,6 +269,10 @@ function Checkout() {
             fullAddress = data.display_name || "";
             finalCity = cityVal;
             postcode = addr.postcode || "";
+            
+            // Extract landmark if present in OSM data
+            const detectedLandmark = addr.amenity || addr.building || addr.shop || addr.tourism || addr.historic || addr.leisure || addr.place || addr.neighbourhood || addr.suburb || "";
+            setForm(prev => ({ ...prev, landmark: detectedLandmark || prev.landmark }));
           }
         } catch (err) {
           console.warn("Nominatim lookup failed, trying BigDataCloud...", err);
@@ -676,10 +683,7 @@ function Checkout() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700">Notes (optional)</Label>
-              <Textarea className="min-h-[70px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Landmark or delivery instructions" />
-            </div>
+
 
             {/* ORDER SUMMARY — shown BELOW form on mobile, hidden on desktop */}
             <div className="lg:hidden w-full mt-6">
