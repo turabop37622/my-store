@@ -9,6 +9,9 @@ export async function placeOrder(data: {
   postal_code?: string | null;
   notes?: string | null;
   discount_code?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  landmark?: string | null;
   items: Array<{
     product_id: string;
     slug: string;

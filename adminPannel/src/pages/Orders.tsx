@@ -88,6 +88,27 @@ export default function Orders() {
                   <div><p className="text-xs text-slate-400">Postal Code</p><p className="font-semibold text-slate-800">{selectedOrder.postalCode || "N/A"}</p></div>
                 </div>
                 <div><p className="text-xs text-slate-400">Address</p><p className="font-semibold text-slate-800">{selectedOrder.address}</p></div>
+                {selectedOrder.landmark && (
+                  <div><p className="text-xs text-slate-400">Nearest Landmark</p><p className="font-semibold text-amber-700 text-xs">{selectedOrder.landmark}</p></div>
+                )}
+                {selectedOrder.latitude && selectedOrder.longitude && (
+                  <div className="pt-2 border-t border-slate-200">
+                    <p className="text-xs text-slate-400">Exact GPS Coordinates</p>
+                    <div className="flex items-center justify-between mt-1 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
+                      <span className="font-mono text-xs text-slate-500">
+                        {selectedOrder.latitude.toFixed(6)}, {selectedOrder.longitude.toFixed(6)}
+                      </span>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${selectedOrder.latitude},${selectedOrder.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold uppercase rounded-md shadow-sm transition-all"
+                      >
+                        📍 Open Google Maps
+                      </a>
+                    </div>
+                  </div>
+                )}
                 <div><p className="text-xs text-slate-400">Tracking ID</p><p className="font-semibold text-slate-800 font-mono">{selectedOrder.trackingId || "Not assigned"}</p></div>
               </div>
               <div className="bg-slate-50 rounded-xl p-4">

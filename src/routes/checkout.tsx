@@ -67,6 +67,9 @@ function Checkout() {
     city: "",
     postal_code: "",
     notes: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
+    landmark: "",
   });
   const [locating, setLocating] = useState(false);
   const [showMap, setShowMap] = useState(false);
@@ -140,12 +143,7 @@ function Checkout() {
         setLocating(true);
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.lat}&lon=${position.lng}&addressdetails=1`,
-            {
-              headers: {
-                "Accept-Language": "en",
-              }
-            }
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.lat}&lon=${position.lng}&zoom=18&addressdetails=1&accept-language=en`
           );
           if (response.ok) {
             const data = await response.json();
@@ -178,7 +176,9 @@ function Checkout() {
               ...prev,
               address: data.display_name || "",
               city: matchedCity || prev.city,
-              postal_code: finalPostcode || prev.postal_code || ""
+              postal_code: finalPostcode || prev.postal_code || "",
+              latitude: position.lat,
+              longitude: position.lng
             }));
             
             toast.success("Location updated based on pinned marker!");
@@ -256,12 +256,7 @@ function Checkout() {
       if (!fullAddress) {
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-            {
-              headers: {
-                "Accept-Language": "en",
-              }
-            }
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&accept-language=en`
           );
           if (response.ok) {
             const data = await response.json();
@@ -326,7 +321,9 @@ function Checkout() {
           ...prev,
           address: fullAddress,
           city: matchedCity || prev.city,
-          postal_code: finalPostcode || prev.postal_code || ""
+          postal_code: finalPostcode || prev.postal_code || "",
+          latitude: latitude,
+          longitude: longitude
         }));
 
         setCoordinates({ lat: latitude, lng: longitude });
@@ -424,6 +421,9 @@ function Checkout() {
         city: form.city.trim(),
         postal_code: form.postal_code.trim() || null,
         notes: form.notes.trim() || null,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        landmark: form.landmark.trim() || null,
         discount_code: discountApplied ? discountCode.trim() : null,
         items: items.map((i) => {
           const qty2 = i.qty2_discount_percent !== undefined ? i.qty2_discount_percent : 3;
@@ -625,6 +625,7 @@ function Checkout() {
                 </button>
               </div>
               <Textarea required className="min-h-[90px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="House #, Street, Area" />
+              <p className="text-[11px] text-amber-600 font-semibold mt-1">⚠️ Please review and correct the address if needed</p>
               {showMap && (
                 <div className="space-y-2 pt-2">
                   <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
@@ -643,6 +644,16 @@ function Checkout() {
                   />
                 </div>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-700">Nearest Landmark (optional but recommended)</Label>
+              <Input
+                className="h-12 rounded-xl border-slate-200 bg-white shadow-sm"
+                value={form.landmark}
+                onChange={e => setForm({ ...form, landmark: e.target.value })}
+                placeholder="e.g. Near Habib Bank, Opposite XYZ Mosque (helps our rider find you faster)"
+              />
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">

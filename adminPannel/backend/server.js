@@ -525,7 +525,7 @@ app.post('/api/support-chat', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
   try {
     const database = await connectDB();
-    const { customer_name, phone, email, city, address, postal_code, notes, discount_code, items } = req.body;
+    const { customer_name, phone, email, city, address, postal_code, notes, discount_code, items, latitude, longitude, landmark } = req.body;
 
     if (!Array.isArray(items)) {
       return res.status(400).json({ error: "Items must be an array" });
@@ -604,7 +604,10 @@ app.post('/api/orders', async (req, res) => {
       postal_code: postal_code || null, notes: notes || null,
       discount_code: verified_code, discount_amount,
       items: trustedItems, subtotal, shipping_fee: 0,
-      total_amount, status: 'pending', created_at: new Date()
+      total_amount, status: 'pending', created_at: new Date(),
+      latitude: latitude !== undefined && latitude !== null ? Number(latitude) : null,
+      longitude: longitude !== undefined && longitude !== null ? Number(longitude) : null,
+      landmark: landmark || null
     });
 
     if (verified_code) {
@@ -791,6 +794,9 @@ app.get('/api/admin/orders', async (req, res) => {
       city: o.city,
       address: o.address,
       postalCode: o.postal_code || null,
+      latitude: o.latitude !== undefined && o.latitude !== null ? Number(o.latitude) : null,
+      longitude: o.longitude !== undefined && o.longitude !== null ? Number(o.longitude) : null,
+      landmark: o.landmark || null,
       trackingId: o.tracking_id || null,
       items: o.items.map(i => `${i.quantity}x ${i.name}`).join(', '),
       total: o.total_amount,
