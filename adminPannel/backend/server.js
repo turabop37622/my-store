@@ -883,7 +883,7 @@ app.post('/api/admin/products', async (req, res) => {
       images: images || [],
       qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
       qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
-      sales_baseline: Number(sales_baseline) || 0
+      sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0")
     });
     res.json({ success: true, id: result.insertedId.toString() });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -907,7 +907,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       details: details || [],
       qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
       qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
-      sales_baseline: Number(sales_baseline) || 0,
+      sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0"),
       updated_at: new Date()
     };
     if (images) updateDoc.images = images;

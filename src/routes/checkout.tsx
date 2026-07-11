@@ -84,57 +84,49 @@ function Checkout() {
         let finalCity = "";
         let postcode = "";
 
-        // Method 1: Try BigDataCloud reverse geocode API (very fast, CORS friendly)
+        // Method 1: Try OpenStreetMap Nominatim first (very detailed, exact street address)
         try {
           const response = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+            {
+              headers: {
+                "Accept-Language": "en",
+              }
+            }
           );
           if (response.ok) {
             const data = await response.json();
-            const parts = [
-              data.locality || "",
-              data.principalSubdivision || "",
-              data.countryName || ""
-            ].filter(Boolean);
-            fullAddress = parts.join(", ");
-            finalCity = data.city || data.locality || "";
-            postcode = data.postcode || "";
+            const addr = data.address || {};
+            const cityVal = addr.city || addr.town || addr.village || addr.state || "";
+            
+            // Use display_name directly if available for the most precise address details
+            fullAddress = data.display_name || "";
+            finalCity = cityVal;
+            postcode = addr.postcode || "";
           }
-        } catch (e) {
-          console.warn("BigDataCloud lookup failed, trying Nominatim...", e);
+        } catch (err) {
+          console.warn("Nominatim lookup failed, trying BigDataCloud...", err);
         }
 
-        // Method 2: Fallback to OpenStreetMap Nominatim
+        // Method 2: Fallback to BigDataCloud reverse geocode API (simpler locality details)
         if (!fullAddress) {
           try {
             const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-              {
-                headers: {
-                  "Accept-Language": "en",
-                }
-              }
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
             );
             if (response.ok) {
               const data = await response.json();
-              const addr = data.address || {};
-              const street = addr.road || addr.suburb || addr.neighbourhood || "";
-              const cityVal = addr.city || addr.town || addr.village || addr.state || "";
-              
-              const formattedAddressParts = [
-                addr.amenity || addr.building || "",
-                addr.house_number ? `House ${addr.house_number}` : "",
-                street,
-                addr.suburb || addr.subdivision || "",
-                addr.neighbourhood || ""
+              const parts = [
+                data.locality || "",
+                data.principalSubdivision || "",
+                data.countryName || ""
               ].filter(Boolean);
-
-              fullAddress = formattedAddressParts.join(", ") || data.display_name || "";
-              finalCity = cityVal;
-              postcode = addr.postcode || "";
+              fullAddress = parts.join(", ");
+              finalCity = data.city || data.locality || "";
+              postcode = data.postcode || "";
             }
-          } catch (err) {
-            console.error("Nominatim lookup failed too", err);
+          } catch (e) {
+            console.error("BigDataCloud lookup failed too", e);
           }
         }
 
