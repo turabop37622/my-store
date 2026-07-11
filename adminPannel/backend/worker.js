@@ -556,18 +556,24 @@ export default {
 
         const finalSystemPrompt = `${systemPromptOverride}${orderInfo ? `\n\nCUSTOMER ORDER CONTEXT:\n${orderInfo}` : ""}`;
 
-        // Clean messages for Cloudflare Workers AI (roles must be 'system', 'user', or 'assistant')
-        const aiMessages = [
-          { role: 'system', content: finalSystemPrompt }
-        ];
-        for (const m of messages) {
-          if (m.role === 'user' || m.role === 'assistant') {
-            aiMessages.push({
-              role: m.role,
-              content: m.content
-            });
+        // Sanitize conversation history: merge consecutive roles, normalize model/assistant, alternate strictly
+        let sanitized = [];
+        for (const msg of messages) {
+          const rawRole = msg.role === 'model' || msg.role === 'assistant' ? 'assistant' : 'user';
+          if (sanitized.length > 0 && sanitized[sanitized.length - 1].role === rawRole) {
+            sanitized[sanitized.length - 1].content += "\n" + msg.content;
+          } else {
+            sanitized.push({ role: rawRole, content: msg.content });
           }
         }
+        while (sanitized.length > 0 && sanitized[0].role !== 'user') {
+          sanitized.shift();
+        }
+
+        const aiMessages = [
+          { role: 'system', content: finalSystemPrompt },
+          ...sanitized
+        ];
 
         // Call Cloudflare Workers AI directly via binding
         let reply = "";
@@ -599,7 +605,7 @@ export default {
       if (path === '/api/orders' && method === 'POST') {
         const db = await getDB();
         const body = await request.json();
-        const { customer_name, phone, email, city, address, postal_code, notes, discount_code, items } = body;
+        const { customer_name, phone, email, city, address, postal_code, notes, discount_code, items, latitude, longitude, landmark } = body;
 
         if (!Array.isArray(items)) return jsonResponse({ error: "Items must be an array" }, 400);
 
@@ -612,6 +618,16 @@ export default {
         const objectIds = items.map(i => new ObjectId(i.product_id));
         const dbProducts = await db.collection("products")
           .find({ _id: { $in: objectIds }, is_active: true }).toArray();
+
+        const now = new Date();
+        const timedDiscounts = await db.collection("timed_discounts")
+          .find({
+            product_id: { $in: items.map(i => i.product_id) },
+            start_time: { $lte: now },
+            end_time: { $gt: now },
+            cancelled: { $ne: true }
+          }).toArray();
+        const discountMap = new Map(timedDiscounts.map(d => [d.product_id, d.discount_percent]));
 
         const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
         const trustedItems = items.map(i => {
@@ -628,7 +644,12 @@ export default {
             discountPercent = qty3_discount;
           }
           
-          const finalPrice = Math.round(Number(p.price) * (1 - discountPercent / 100));
+          const timedDiscountPercent = discountMap.get(p._id.toString()) || 0;
+          const basePrice = timedDiscountPercent > 0
+            ? Math.round(Number(p.price) * (1 - timedDiscountPercent / 100))
+            : Number(p.price);
+
+          const finalPrice = Math.round(basePrice * (1 - discountPercent / 100));
 
           return {
             product_id: p._id.toString(),
@@ -660,7 +681,10 @@ export default {
           postal_code: postal_code || null, notes: notes || null,
           discount_code: verified_code, discount_amount,
           items: trustedItems, subtotal, shipping_fee: 0,
-          total_amount, status: 'pending', created_at: new Date()
+          total_amount, status: 'pending', created_at: new Date(),
+          latitude: latitude !== undefined && latitude !== null ? Number(latitude) : null,
+          longitude: longitude !== undefined && longitude !== null ? Number(longitude) : null,
+          landmark: landmark || null
         });
 
         if (verified_code) {
@@ -825,6 +849,9 @@ export default {
           city: o.city,
           address: o.address,
           postalCode: o.postal_code || null,
+          latitude: o.latitude !== undefined && o.latitude !== null ? Number(o.latitude) : null,
+          longitude: o.longitude !== undefined && o.longitude !== null ? Number(o.longitude) : null,
+          landmark: o.landmark || null,
           trackingId: o.tracking_id || null,
           items: o.items.map(i => `${i.quantity}x ${i.name}`).join(', '),
           total: o.total_amount,
@@ -885,14 +912,15 @@ export default {
           details: p.details || [],
           images: p.images || (p.image_url ? [p.image_url] : []),
           qty2_discount_percent: p.qty2_discount_percent !== undefined ? p.qty2_discount_percent : 3,
-          qty3_discount_percent: p.qty3_discount_percent !== undefined ? p.qty3_discount_percent : 5
+          qty3_discount_percent: p.qty3_discount_percent !== undefined ? p.qty3_discount_percent : 5,
+          sales_baseline: p.sales_baseline || "0,0,0,0,0,0,0"
         })));
       }
 
       // ─── ADMIN PRODUCTS ADD ───────────────────────
       if (path === '/api/admin/products' && method === 'POST') {
         const db = await getDB();
-        const { name, slug, price, original_price, category, tagline, image_url, stock, details, images, qty2_discount_percent, qty3_discount_percent } = await request.json();
+        const { name, slug, price, original_price, category, tagline, image_url, stock, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline } = await request.json();
         const result = await db.collection("products").insertOne({
           name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
           price: Number(price), original_price: original_price ? Number(original_price) : null,
@@ -901,7 +929,8 @@ export default {
           rating: 4.5, created_at: new Date(), details: details || [],
           images: images || [],
           qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
-          qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5
+          qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
+          sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0")
         });
         return jsonResponse({ success: true, id: result.insertedId.toString() });
       }
@@ -911,7 +940,7 @@ export default {
         const id = path.replace('/api/admin/products/', '');
         if (!ObjectId.isValid(id)) return jsonResponse({ error: "Invalid product ID" }, 400);
         const db = await getDB();
-        const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent } = await request.json();
+        const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline } = await request.json();
         const updateDoc = {
           name, price: Number(price),
           original_price: original_price ? Number(original_price) : null,
@@ -921,6 +950,7 @@ export default {
           details: details || [],
           qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
           qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
+          sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0"),
           updated_at: new Date()
         };
         if (images) updateDoc.images = images;
@@ -1388,6 +1418,22 @@ export default {
           return jsonResponse({ enabled: false });
         }
 
+        let baselines = [0, 0, 0, 0, 0, 0, 0];
+        if (ObjectId.isValid(productId)) {
+          const product = await db.collection("products").findOne({ _id: new ObjectId(productId) });
+          if (product && product.sales_baseline) {
+            const valStr = String(product.sales_baseline);
+            if (valStr.includes(',')) {
+              baselines = valStr.split(',').map(n => Number(n.trim()) || 0);
+            } else {
+              const singleNum = Number(valStr) || 0;
+              baselines = [0, 0, 0, 0, 0, 0, singleNum];
+            }
+          }
+        }
+        while (baselines.length < 7) baselines.unshift(0);
+        if (baselines.length > 7) baselines = baselines.slice(0, 7);
+
         const now = new Date();
         const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
         const weekStart = new Date(now); weekStart.setDate(now.getDate() - 6); weekStart.setHours(0, 0, 0, 0);
@@ -1415,7 +1461,7 @@ export default {
           { $sort: { _id: 1 } }
         ]).toArray();
 
-        // Build full 7-day array (fill missing days with 0)
+        // Build full 7-day array
         const days = [];
         for (let i = 6; i >= 0; i--) {
           const d = new Date(now);
@@ -1423,12 +1469,13 @@ export default {
           const key = d.toISOString().split('T')[0];
           const label = d.toLocaleDateString('en-PK', { weekday: 'short', timeZone: 'Asia/Karachi' });
           const found = weekOrders.find(w => w._id === key);
-          days.push({ date: key, label, units: found?.units || 0, revenue: found?.revenue || 0 });
+          const units = (found?.units || 0) + baselines[6 - i];
+          days.push({ date: key, label, units, revenue: found?.revenue || 0 });
         }
 
         return jsonResponse({
           enabled: true,
-          today: { units: todayAgg[0]?.units || 0, revenue: todayAgg[0]?.revenue || 0 },
+          today: { units: (todayAgg[0]?.units || 0) + baselines[6], revenue: todayAgg[0]?.revenue || 0 },
           week: days,
         });
       }
