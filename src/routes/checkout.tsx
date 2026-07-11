@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { placeOrder } from "@/lib/orders.functions";
 import { useCart } from "@/lib/cart-store";
 import { getProductImage } from "@/lib/product-images";
@@ -69,6 +69,144 @@ function Checkout() {
     notes: "",
   });
   const [locating, setLocating] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+
+  // Helper loader for Leaflet CDN scripts dynamically
+  const loadLeaflet = (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if ((window as any).L) {
+        resolve((window as any).L);
+        return;
+      }
+      if (!document.getElementById("leaflet-css")) {
+        const link = document.createElement("link");
+        link.id = "leaflet-css";
+        link.rel = "stylesheet";
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+        document.head.appendChild(link);
+      }
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      script.async = true;
+      script.onload = () => resolve((window as any).L);
+      script.onerror = () => reject(new Error("Failed to load Leaflet"));
+      document.body.appendChild(script);
+    });
+  };
+
+  useEffect(() => {
+    if (!showMap || !coordinates) return;
+    let active = true;
+
+    loadLeaflet().then((L) => {
+      if (!active) return;
+
+      const DefaultIcon = L.icon({
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      L.Marker.prototype.options.icon = DefaultIcon;
+
+      if (mapRef.current) {
+        mapRef.current.setView([coordinates.lat, coordinates.lng], 16);
+        if (markerRef.current) {
+          markerRef.current.setLatLng([coordinates.lat, coordinates.lng]);
+        }
+        return;
+      }
+
+      const map = L.map("checkout-map").setView([coordinates.lat, coordinates.lng], 16);
+      mapRef.current = map;
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      const marker = L.marker([coordinates.lat, coordinates.lng], {
+        draggable: true
+      }).addTo(map);
+      markerRef.current = marker;
+
+      marker.on("dragend", async () => {
+        const position = marker.getLatLng();
+        setCoordinates({ lat: position.lat, lng: position.lng });
+        setLocating(true);
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.lat}&lon=${position.lng}&addressdetails=1`,
+            {
+              headers: {
+                "Accept-Language": "en",
+              }
+            }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            const addr = data.address || {};
+            const cityVal = addr.city || addr.town || addr.village || addr.state || "";
+            
+            const cleanCity = cityVal.replace(" Cantonment", "").trim();
+            const matchedCity = PAKISTAN_CITIES.find(
+              c => c.toLowerCase() === cleanCity.toLowerCase() || 
+                   c.toLowerCase().includes(cleanCity.toLowerCase()) ||
+                   cleanCity.toLowerCase().includes(c.toLowerCase())
+            ) || "";
+
+            let finalPostcode = addr.postcode || "";
+            if (!finalPostcode && matchedCity) {
+              const lowCity = matchedCity.toLowerCase();
+              if (lowCity === "lahore") finalPostcode = "54000";
+              else if (lowCity === "karachi") finalPostcode = "74000";
+              else if (lowCity === "islamabad") finalPostcode = "44000";
+              else if (lowCity === "rawalpindi") finalPostcode = "46000";
+              else if (lowCity === "faisalabad") finalPostcode = "38000";
+              else if (lowCity === "multan") finalPostcode = "60000";
+              else if (lowCity === "peshawar") finalPostcode = "25000";
+              else if (lowCity === "quetta") finalPostcode = "87300";
+              else if (lowCity === "sialkot") finalPostcode = "51310";
+              else if (lowCity === "gujranwala") finalPostcode = "52250";
+            }
+
+            setForm(prev => ({
+              ...prev,
+              address: data.display_name || "",
+              city: matchedCity || prev.city,
+              postal_code: finalPostcode || prev.postal_code || ""
+            }));
+            
+            toast.success("Location updated based on pinned marker!");
+          }
+        } catch (e) {
+          console.error("Geocoding on drag failed", e);
+        } finally {
+          setLocating(false);
+        }
+      });
+    }).catch(err => {
+      console.error("Failed to load map library", err);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [showMap, coordinates]);
+
+  // Clean map instance on component unmount
+  useEffect(() => {
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
@@ -84,27 +222,59 @@ function Checkout() {
       let finalCity = "";
       let postcode = "";
 
-      // Try OpenStreetMap Nominatim first (highly detailed)
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-          {
-            headers: {
-              "Accept-Language": "en",
+      const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+      // Method 1: Try Google Maps Geocoding if API key is provided
+      if (googleMapsApiKey) {
+        try {
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleMapsApiKey}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.status === "OK" && data.results && data.results.length > 0) {
+              const result = data.results[0];
+              fullAddress = result.formatted_address || "";
+              
+              const comps = result.address_components || [];
+              const cityComp = comps.find((c: any) => 
+                c.types.includes("locality") || 
+                c.types.includes("administrative_area_level_2")
+              );
+              const postalComp = comps.find((c: any) => c.types.includes("postal_code"));
+              
+              if (cityComp) finalCity = cityComp.long_name;
+              if (postalComp) postcode = postalComp.long_name;
             }
           }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          const addr = data.address || {};
-          const cityVal = addr.city || addr.town || addr.village || addr.state || "";
-          
-          fullAddress = data.display_name || "";
-          finalCity = cityVal;
-          postcode = addr.postcode || "";
+        } catch (err) {
+          console.warn("Google Maps Geocoding failed, falling back to OpenStreetMap...", err);
         }
-      } catch (err) {
-        console.warn("Nominatim lookup failed, trying BigDataCloud...", err);
+      }
+
+      // Method 2: Try OpenStreetMap Nominatim fallback (highly detailed)
+      if (!fullAddress) {
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+            {
+              headers: {
+                "Accept-Language": "en",
+              }
+            }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            const addr = data.address || {};
+            const cityVal = addr.city || addr.town || addr.village || addr.state || "";
+            
+            fullAddress = data.display_name || "";
+            finalCity = cityVal;
+            postcode = addr.postcode || "";
+          }
+        } catch (err) {
+          console.warn("Nominatim lookup failed, trying BigDataCloud...", err);
+        }
       }
 
       // Try BigDataCloud fallback (simpler details)
@@ -159,7 +329,10 @@ function Checkout() {
           postal_code: finalPostcode || prev.postal_code || ""
         }));
 
-        toast.success("Location auto-filled! Please review and complete your details.");
+        setCoordinates({ lat: latitude, lng: longitude });
+        setShowMap(true);
+
+        toast.success("Location auto-filled! Please drag the map pin to adjust your exact location.");
       } else {
         toast.error("Unable to resolve address. Please enter your address manually.");
       }
@@ -179,10 +352,10 @@ function Checkout() {
             toast.error("Location request unavailable. Please enter address manually.");
             setLocating(false);
           },
-          { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
         );
       },
-      { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
@@ -452,6 +625,24 @@ function Checkout() {
                 </button>
               </div>
               <Textarea required className="min-h-[90px] rounded-xl border-slate-200 bg-white shadow-sm pt-3" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="House #, Street, Area" />
+              {showMap && (
+                <div className="space-y-2 pt-2">
+                  <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
+                    <span>📍 Drag the pin to your exact delivery location</span>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowMap(false)}
+                      className="text-red-500 hover:underline border-0 bg-transparent cursor-pointer font-bold"
+                    >
+                      Hide Map
+                    </button>
+                  </div>
+                  <div 
+                    id="checkout-map" 
+                    className="w-full h-[220px] rounded-2xl border border-slate-200 shadow-inner relative z-10" 
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
