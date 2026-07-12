@@ -118,9 +118,9 @@ export default function SupportButtons() {
           {/* Messages list */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-950">
             {messages.map((m, idx) => {
-              const cardMatch = m.content.match(/\[PRODUCT_CARD:\s*([a-zA-Z0-9_-]+)\]/);
+              const cardMatch = m.content.match(/\[PRODUCT_?CARD:\s*([a-zA-Z0-9_-]+)\]/i);
               const cardSlug = cardMatch ? cardMatch[1] : null;
-              const cleanContent = m.content.replace(/\[PRODUCT_CARD:\s*[a-zA-Z0-9_-]+\]/, "").trim();
+              const cleanContent = m.content.replace(/\[PRODUCT_?CARD:\s*[a-zA-Z0-9_-]+\]/i, "").trim();
               const matchedProduct = cardSlug ? productList.find(p => p.slug === cardSlug) : null;
 
               return (
