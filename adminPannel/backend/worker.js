@@ -554,7 +554,31 @@ export default {
           }
         }
 
-        const finalSystemPrompt = `${systemPromptOverride}${orderInfo ? `\n\nCUSTOMER ORDER CONTEXT:\n${orderInfo}` : ""}`;
+        // Fetch active products and timed discounts for chatbot context
+        const products = await db.collection("products").find({ is_active: true }).toArray();
+        const now = new Date();
+        const timedDiscounts = await db.collection("timed_discounts").find({
+          start_time: { $lte: now },
+          end_time: { $gt: now },
+          cancelled: { $ne: true }
+        }).toArray();
+
+        let discountInfo = "\n\nACTIVE PRODUCTS & DISCOUNT INFORMATION:";
+        for (const p of products) {
+          const activeDiscount = timedDiscounts.find(d => d.product_id === p._id.toString());
+          if (activeDiscount) {
+            const discPercent = activeDiscount.discount_percent;
+            const originalPrice = Number(p.price);
+            const discountedPrice = Math.round(originalPrice * (1 - discPercent / 100));
+            discountInfo += `\n- ${p.name}: Slug is '${p.slug}', Original Price Rs ${originalPrice.toLocaleString()}, CURRENT ACTIVE DISCOUNT IS ${discPercent}% OFF! Discounted Price is Rs ${discountedPrice.toLocaleString()}!`;
+          } else {
+            discountInfo += `\n- ${p.name}: Slug is '${p.slug}', Price Rs ${Number(p.price).toLocaleString()} (No special timed discount currently).`;
+          }
+        }
+
+        const cardInstruction = "\n\nCRITICAL INSTRUCTION: Whenever you recommend or mention any product (especially ones on discount), you MUST append '[PRODUCT_CARD: product-slug]' on a new line at the very end of your response. Replace 'product-slug' with the product's actual slug. Example: if recommending Breezy Buds Pro Max, end with [PRODUCT_CARD: breezy-buds-pro-max]";
+
+        const finalSystemPrompt = `${systemPromptOverride}${orderInfo ? `\n\nCUSTOMER ORDER CONTEXT:\n${orderInfo}` : ""}${cardInstruction}${discountInfo}`;
 
         // Sanitize conversation history: merge consecutive roles, normalize model/assistant, alternate strictly
         let sanitized = [];
@@ -578,13 +602,13 @@ export default {
         // Call Cloudflare Workers AI directly via binding
         let reply = "";
         try {
-          const aiResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+          const aiResult = await env.AI.run('@cf/meta/llama-3.2-3b-instruct', {
             messages: aiMessages
           });
           reply = aiResult.response || "I'm sorry, I couldn't process that.";
         } catch (aiError) {
           console.error("Cloudflare Workers AI Error:", aiError);
-          return jsonResponse({ error: aiError.message || "Workers AI execution error" }, 500);
+          reply = `[Cloudflare Workers AI Error: ${aiError.message || "Execution failed"}] Please ensure Workers AI is enabled in your Cloudflare account.`;
         }
 
         // Optionally log to support_conversations

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { MessageSquare, X, Send, Loader2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { API_URL } from "@/lib/db";
 
 interface Setting {
@@ -22,11 +23,18 @@ export default function SupportButtons() {
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [productList, setProductList] = useState<any[]>([]);
+
   useEffect(() => {
     fetch(`${API_URL}/api/settings`)
       .then((res) => res.json())
       .then((data: Setting) => setSettings(data))
       .catch((err) => console.error("Error fetching support settings:", err));
+
+    fetch(`${API_URL}/api/products`)
+      .then((res) => res.json())
+      .then((data) => setProductList(data))
+      .catch((err) => console.error("Error fetching products for chat:", err));
   }, []);
 
   const scrollToBottom = () => {
@@ -67,9 +75,13 @@ export default function SupportButtons() {
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
     } catch (err) {
       console.error(err);
+      const errMsg = err instanceof Error ? err.message : "Connection failed";
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "I'm sorry, I am unable to connect right now. Please try again shortly or contact us on WhatsApp." }
+        { 
+          role: "assistant", 
+          content: `I'm sorry, I am unable to connect right now. (Detail: ${errMsg}). Please try again shortly or contact us on WhatsApp.` 
+        }
       ]);
     } finally {
       setIsSending(false);
@@ -105,22 +117,55 @@ export default function SupportButtons() {
 
           {/* Messages list */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-950">
-            {messages.map((m, idx) => (
-              <div
-                key={idx}
-                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-              >
+            {messages.map((m, idx) => {
+              const cardMatch = m.content.match(/\[PRODUCT_CARD:\s*([a-zA-Z0-9_-]+)\]/);
+              const cardSlug = cardMatch ? cardMatch[1] : null;
+              const cleanContent = m.content.replace(/\[PRODUCT_CARD:\s*[a-zA-Z0-9_-]+\]/, "").trim();
+              const matchedProduct = cardSlug ? productList.find(p => p.slug === cardSlug) : null;
+
+              return (
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm font-semibold shadow-sm leading-relaxed ${
-                    m.role === "user"
-                      ? "bg-emerald-500 text-white rounded-br-none"
-                      : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-bl-none"
-                  }`}
+                  key={idx}
+                  className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}
                 >
-                  {m.content}
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm font-semibold shadow-sm leading-relaxed ${
+                      m.role === "user"
+                        ? "bg-emerald-500 text-white rounded-br-none"
+                        : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-bl-none"
+                    }`}
+                  >
+                    {cleanContent}
+                  </div>
+                  {matchedProduct && (
+                    <div className="w-[80%] mt-2 p-2.5 bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800 rounded-2xl flex gap-3 items-center shadow-md animate-in fade-in zoom-in duration-200">
+                      <img 
+                        src={matchedProduct.image_url || "/placeholder.jpg"} 
+                        alt={matchedProduct.name} 
+                        className="h-12 w-12 rounded-xl object-cover bg-slate-50 border border-slate-100 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{matchedProduct.name}</h5>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs font-extrabold text-emerald-600">Rs {matchedProduct.price.toLocaleString()}</span>
+                          {matchedProduct.original_price && (
+                            <span className="text-[10px] text-slate-400 line-through">Rs {matchedProduct.original_price.toLocaleString()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <Link 
+                        to="/product/$slug"
+                        params={{ slug: matchedProduct.slug }}
+                        onClick={() => setChatOpen(false)}
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-extrabold rounded-lg uppercase tracking-wider transition-colors shrink-0"
+                      >
+                        Buy ➔
+                      </Link>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {isSending && (
               <div className="flex justify-start">
                 <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-1">
