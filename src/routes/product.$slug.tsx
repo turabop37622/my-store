@@ -347,7 +347,7 @@ function ProductPage() {
 
   return (
     <>
-      <main className="min-h-screen bg-[#f5f5f5] text-neutral-800 pt-28 md:pt-36 pb-0">
+      <main className="min-h-screen bg-[#f5f5f5] text-neutral-800 pt-28 md:pt-36 pb-0 overflow-clip">
         <Toaster richColors position="top-center" />
 
         {/* ════════ STICKY TABS (Floating Glassmorphism Pill) ════════ */}
