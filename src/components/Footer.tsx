@@ -39,15 +39,15 @@ export function Footer() {
       {/* Decorative background element */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
-      <div className="mx-auto max-w-[1600px] px-4 md:px-10">
+      <div className="mx-auto max-w-[1920px] px-4 md:px-[40px]">
         {/* Top Section: Newsletter & Brand */}
         <div className="grid lg:grid-cols-12 gap-16 pb-20 border-b border-white/5">
           <div className="lg:col-span-5 space-y-8">
             <Link to="/" className="flex items-center gap-4 group">
-              <div className="h-12 w-12 rounded-2xl bg-white text-black flex items-center justify-center font-black text-2xl shadow-[0_0_30px_rgba(255,255,255,0.2)] group-hover:scale-110 transition-transform duration-500">
+              <div className="h-12 w-12 rounded-2xl bg-white text-black flex items-center justify-center font-medium text-2xl shadow-[0_0_30px_rgba(255,255,255,0.2)] group-hover:scale-110 transition-transform duration-500">
                 B
               </div>
-              <span className="text-3xl font-black tracking-tighter uppercase text-white">BreezyGo</span>
+              <span className="text-3xl font-normal tracking-tighter text-white">BreezyGo</span>
             </Link>
             <p className="text-white/50 text-lg leading-relaxed max-w-md">
               Pakistan's premium digital lifestyle brand. We bring you world-class audio, smart wearables, and tech essentials with a touch of local soul.
@@ -74,10 +74,10 @@ export function Footer() {
           <div className="lg:col-span-7">
             <div className="bg-white/[0.03] border border-white/10 rounded-[3rem] p-8 md:p-12 relative overflow-hidden group">
               <div className="relative z-10 space-y-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/20">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-medium tracking-widest border border-primary/20">
                   Join the Club
                 </div>
-                <h3 className="text-2xl md:text-4xl font-black uppercase tracking-tighter">
+                <h3 className="text-2xl md:text-4xl font-normal tracking-tighter">
                   Unlock 5% OFF <br /> On Your First Order
                 </h3>
                 <p className="text-white/40 text-sm font-medium">
@@ -107,7 +107,7 @@ export function Footer() {
                       <Button
                         type="submit"
                         disabled={subStatus === "loading"}
-                        className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20"
+                        className="h-14 px-8 rounded-2xl font-medium tracking-widest shadow-xl shadow-primary/20"
                       >
                         {subStatus === "loading" ? "..." : <>Subscribe <ArrowRight className="ml-2 h-4 w-4" /></>}
                       </Button>
@@ -127,7 +127,7 @@ export function Footer() {
         {/* Middle Section: Links Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-12 py-20">
           <div>
-            <h4 className="text-xs font-black uppercase tracking-[0.3em] mb-8 text-white/30">Quick Shop</h4>
+            <h4 className="text-xs font-medium uppercase tracking-[0.3em] mb-8 text-white/30">Quick Shop</h4>
             <ul className="space-y-4">
               {["Earbuds", "Smart Watches", "Headphones", "Speakers", "Accessories"].map((link) => (
                 <li key={link}>
@@ -144,7 +144,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="text-xs font-black uppercase tracking-[0.3em] mb-8 text-white/30">Customer Help</h4>
+            <h4 className="text-xs font-medium uppercase tracking-[0.3em] mb-8 text-white/30">Customer Help</h4>
             <ul className="space-y-4">
               {[
                 { label: "Track Your Order", to: "/track-order" },
@@ -167,7 +167,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="text-xs font-black uppercase tracking-[0.3em] mb-8 text-white/30">Shop Perks</h4>
+            <h4 className="text-xs font-medium uppercase tracking-[0.3em] mb-8 text-white/30">Shop Perks</h4>
             <div className="space-y-6">
               {[
                 { icon: Truck, title: "Free Shipping", sub: "Pakistan-wide delivery" },
@@ -179,7 +179,7 @@ export function Footer() {
                     <perk.icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold uppercase text-white tracking-widest">{perk.title}</div>
+                    <div className="text-xs font-medium uppercase text-white tracking-widest">{perk.title}</div>
                     <div className="text-[10px] text-white/40 mt-0.5">{perk.sub}</div>
                   </div>
                 </div>
@@ -190,7 +190,7 @@ export function Footer() {
 
         {/* Bottom Section: Copyright & Legal */}
         <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-[10px] font-medium tracking-[0.2em] text-white/30">
             <span>© {new Date().getFullYear()} BreezyGo Pakistan. All Rights Reserved.</span>
             <div className="flex gap-4">
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
@@ -199,7 +199,7 @@ export function Footer() {
           </div>
 
           <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-white/5 border border-white/10">
-            <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Made in Pakistan</span>
+            <span className="text-[10px] font-medium tracking-widest text-white/50">Made in Pakistan</span>
             <div className="h-3 w-[1px] bg-white/10" />
             <span className="text-red-500 animate-pulse text-xs">❤️</span>
           </div>

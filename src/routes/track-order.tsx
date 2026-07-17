@@ -118,7 +118,7 @@ function TrackOrderPage() {
     <main className="min-h-screen bg-[#fcfcfc] pt-32 md:pt-40 pb-24">
       <Toaster richColors position="top-center" />
 
-      <div className="mx-auto max-w-[1200px] px-4 md:px-10">
+      <div className="mx-auto max-w-[1200px] px-4 md:px-[40px]">
         <div className="text-center space-y-4 mb-16">
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
             Track Your Order

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { MessageSquare, X, Send, Loader2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { API_URL } from "@/lib/db";
+import { fetchFromApi, API_URL } from "@/lib/db";
 
 interface Setting {
   whatsapp_number?: string;
@@ -26,15 +26,19 @@ export default function SupportButtons() {
   const [productList, setProductList] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/settings`)
-      .then((res) => res.json())
-      .then((data: Setting) => setSettings(data))
-      .catch((err) => console.error("Error fetching support settings:", err));
+    fetchFromApi(`/api/settings`)
+      .then((data: Setting) => setSettings(data && typeof data === "object" && !("error" in data) ? data : {}))
+      .catch((err) => {
+        console.error("Error fetching support settings:", err);
+        setSettings({});
+      });
 
-    fetch(`${API_URL}/api/products`)
-      .then((res) => res.json())
-      .then((data) => setProductList(data))
-      .catch((err) => console.error("Error fetching products for chat:", err));
+    fetchFromApi(`/api/products`)
+      .then((data) => setProductList(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        console.error("Error fetching products for chat:", err);
+        setProductList([]);
+      });
   }, []);
 
   const scrollToBottom = () => {

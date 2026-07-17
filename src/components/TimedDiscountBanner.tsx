@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { Sparkles, Timer } from "lucide-react";
-import { API_URL } from "@/lib/db";
+import { Sparkles, Timer, PartyPopper } from "lucide-react";
+import { fetchFromApi } from "@/lib/db";
 
 interface DiscountInfo {
   active: boolean;
@@ -22,8 +22,7 @@ export default function TimedDiscountBanner({ productId, onDiscountChange }: Pro
 
   useEffect(() => {
     if (!productId) return;
-    fetch(`${API_URL}/api/discounts/${productId}`)
-      .then((res) => res.json())
+    fetchFromApi(`/api/discounts/${productId}`)
       .then((data: DiscountInfo) => {
         setDiscount(data);
         if (data.active && data.discount_percent) {
@@ -88,8 +87,8 @@ export default function TimedDiscountBanner({ productId, onDiscountChange }: Pro
           <Sparkles className="h-5 w-5 text-white animate-pulse" />
         </div>
         <div>
-          <h4 className="font-extrabold text-sm md:text-base tracking-wide uppercase">
-            🎉 Limited Time Offer!
+          <h4 className="font-extrabold text-sm md:text-base tracking-wide uppercase flex items-center gap-2">
+            <PartyPopper className="w-5 h-5" /> Limited Time Offer!
           </h4>
           <p className="text-xs text-white/95 font-medium mt-0.5">
             Get an extra <strong className="font-black text-white">{discount.discount_percent}% OFF</strong> on this product!

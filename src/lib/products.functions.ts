@@ -17,6 +17,19 @@ export type Product = {
   images?: string[];
   stock?: number;
   is_active?: boolean;
+  hero_image?: string;
+  hero_image_mobile?: string;
+  hero_text?: string;
+  hero_subtitle?: string;
+  watermark_image?: string;
+  watermark_title?: string;
+  watermark_text?: string;
+  qty2_discount_percent?: number;
+  qty3_discount_percent?: number;
+  features?: any[];
+  sound_tabs?: any[];
+  specs?: any[];
+  testimonials?: any[];
 };
 
 export async function listProducts(): Promise<Product[]> {

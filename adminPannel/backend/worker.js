@@ -424,23 +424,20 @@ export default {
           if (category) filter.category = category;
           if (featured === 'true') filter.is_featured = true;
           const products = await db.collection("products").find(filter).project({ details: 0 }).toArray();
-          response = jsonResponse(products.map(p => ({
-            id: p._id.toString(),
-            name: p.name,
-            slug: p.slug,
-            price: p.price,
-            original_price: p.original_price || null,
-            category: p.category,
-            tagline: p.tagline || '',
-            image_url: p.image_url || '',
-            rating: p.rating || 4.5,
-            is_featured: p.is_featured || false,
-            stock: p.stock !== undefined ? Number(p.stock) : 100,
-            is_active: p.is_active !== false,
-            images: p.images || (p.image_url ? [p.image_url] : []),
-            qty2_discount_percent: p.qty2_discount_percent !== undefined ? p.qty2_discount_percent : 3,
-            qty3_discount_percent: p.qty3_discount_percent !== undefined ? p.qty3_discount_percent : 5
-          })), 200, { 'Cache-Control': 'public, max-age=60, s-maxage=60' });
+          response = jsonResponse(products.map(p => {
+            const { _id, ...rest } = p;
+            return {
+              id: _id.toString(),
+              ...rest,
+              rating: rest.rating || 4.5,
+              is_featured: rest.is_featured || false,
+              stock: rest.stock !== undefined ? Number(rest.stock) : 100,
+              is_active: rest.is_active !== false,
+              images: rest.images || (rest.image_url ? [rest.image_url] : []),
+              qty2_discount_percent: rest.qty2_discount_percent !== undefined ? rest.qty2_discount_percent : 3,
+              qty3_discount_percent: rest.qty3_discount_percent !== undefined ? rest.qty3_discount_percent : 5
+            };
+          }), 200, { 'Cache-Control': 'public, max-age=60, s-maxage=60' });
           
           ctx.waitUntil(cache.put(cacheKey, response.clone()));
         }
@@ -489,23 +486,17 @@ export default {
           const db = await getDB();
           const product = await db.collection("products").findOne({ slug });
           if (!product) return jsonResponse({ error: "Product not found" }, 404);
+          const { _id, ...rest } = product;
           response = jsonResponse({
-            id: product._id.toString(),
-            name: product.name,
-            slug: product.slug,
-            price: product.price,
-            original_price: product.original_price || null,
-            category: product.category,
-            tagline: product.tagline || '',
-            image_url: product.image_url || '',
-            rating: product.rating || 4.5,
-            is_featured: product.is_featured || false,
-            stock: product.stock !== undefined ? Number(product.stock) : 100,
-            is_active: product.is_active !== false,
-            details: product.details || [],
-            images: product.images || (product.image_url ? [product.image_url] : []),
-            qty2_discount_percent: product.qty2_discount_percent !== undefined ? product.qty2_discount_percent : 3,
-            qty3_discount_percent: product.qty3_discount_percent !== undefined ? product.qty3_discount_percent : 5
+            id: _id.toString(),
+            ...rest,
+            rating: rest.rating || 4.5,
+            is_featured: rest.is_featured || false,
+            stock: rest.stock !== undefined ? Number(rest.stock) : 100,
+            is_active: rest.is_active !== false,
+            images: rest.images || (rest.image_url ? [rest.image_url] : []),
+            qty2_discount_percent: rest.qty2_discount_percent !== undefined ? rest.qty2_discount_percent : 3,
+            qty3_discount_percent: rest.qty3_discount_percent !== undefined ? rest.qty3_discount_percent : 5
           }, 200, { 'Cache-Control': 'public, max-age=60, s-maxage=60' });
           
           ctx.waitUntil(cache.put(cacheKey, response.clone()));
@@ -944,7 +935,7 @@ export default {
       // ─── ADMIN PRODUCTS ADD ───────────────────────
       if (path === '/api/admin/products' && method === 'POST') {
         const db = await getDB();
-        const { name, slug, price, original_price, category, tagline, image_url, stock, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline } = await request.json();
+        const { name, slug, price, original_price, category, tagline, image_url, stock, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline, testimonials, sound_tabs, features, specs } = await request.json();
         const result = await db.collection("products").insertOne({
           name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
           price: Number(price), original_price: original_price ? Number(original_price) : null,
@@ -954,7 +945,11 @@ export default {
           images: images || [],
           qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
           qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
-          sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0")
+          sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0"),
+          testimonials: testimonials || [],
+          sound_tabs: sound_tabs || [],
+          features: features || [],
+          specs: specs || []
         });
         return jsonResponse({ success: true, id: result.insertedId.toString() });
       }
@@ -964,7 +959,7 @@ export default {
         const id = path.replace('/api/admin/products/', '');
         if (!ObjectId.isValid(id)) return jsonResponse({ error: "Invalid product ID" }, 400);
         const db = await getDB();
-        const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline } = await request.json();
+        const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline, testimonials, sound_tabs, features, specs, faqs, hero_text, hero_subtitle, hero_image, hero_image_mobile, overview_text, watermark_title, watermark_text } = await request.json();
         const updateDoc = {
           name, price: Number(price),
           original_price: original_price ? Number(original_price) : null,
@@ -975,6 +970,19 @@ export default {
           qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
           qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
           sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0"),
+          testimonials: testimonials || [],
+          sound_tabs: sound_tabs || [],
+          features: features || [],
+          specs: specs || [],
+          faqs: faqs || [],
+          hero_text: hero_text || "",
+          hero_subtitle: hero_subtitle || "",
+          hero_image: hero_image || "",
+          hero_image_mobile: hero_image_mobile || "",
+          overview_text: overview_text || "",
+          watermark_title: watermark_title || "",
+          watermark_text: watermark_text || "",
+          watermark_image: watermark_image || "",
           updated_at: new Date()
         };
         if (images) updateDoc.images = images;

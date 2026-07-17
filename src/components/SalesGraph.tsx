@@ -10,7 +10,7 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
-import { API_URL } from "@/lib/db";
+import { fetchFromApi } from "@/lib/db";
 
 interface DailyData {
   date: string;
@@ -38,8 +38,7 @@ export default function SalesGraph({ productId }: Props) {
 
   useEffect(() => {
     if (!productId) return;
-    fetch(`${API_URL}/api/sales-data/${productId}`)
-      .then((res) => res.json())
+    fetchFromApi(`/api/sales-data/${productId}`)
       .then((resData: SalesDataResponse) => {
         if (resData.enabled) {
           setData(resData);
@@ -80,7 +79,7 @@ export default function SalesGraph({ productId }: Props) {
         {/* Dynamic Count-Up Bubble */}
         <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-orange-50 border border-orange-100 text-orange-600 font-extrabold text-sm shadow-sm animate-bounce">
           <Flame className="h-4 w-4 fill-current text-orange-500" />
-          <span>🔥 {animatedToday} sold today</span>
+          <span>{animatedToday} sold today</span>
         </div>
       </div>
 

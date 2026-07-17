@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Eye } from "lucide-react";
-import { API_URL } from "@/lib/db";
+import { fetchFromApi } from "@/lib/db";
 
 interface Settings {
   live_viewers_enabled: boolean;
@@ -15,8 +15,7 @@ export default function LiveViewersCounter() {
   const [viewers, setViewers] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/settings`)
-      .then((res) => res.json())
+    fetchFromApi(`/api/settings`)
       .then((data: Settings) => {
         setSettings(data);
         if (data.live_viewers_enabled) {

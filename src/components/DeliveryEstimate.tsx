@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Truck, MapPin } from "lucide-react";
-import { API_URL } from "@/lib/db";
+import { Truck, MapPin, Zap, Package } from "lucide-react";
+import { fetchFromApi } from "@/lib/db";
 
 interface Settings {
   lahore_delivery_hours?: { min: number; max: number };
@@ -13,8 +13,7 @@ export default function DeliveryEstimate() {
   const [cityType, setCityType] = useState<"lahore" | "other">("lahore");
 
   useEffect(() => {
-    fetch(`${API_URL}/api/settings`)
-      .then((res) => res.json())
+    fetchFromApi(`/api/settings`)
       .then((data: Settings) => setSettings(data))
       .catch((err) => console.error("Error loading settings:", err));
   }, []);
@@ -81,9 +80,9 @@ export default function DeliveryEstimate() {
           <span className="text-xs text-slate-500 font-medium block">Estimated Delivery</span>
           <span className="font-extrabold text-sm text-slate-900 mt-0.5 block">
             {cityType === "lahore" ? (
-              `⚡ Within ${lahoreMin}-${lahoreMax} Hours`
+              <span className="flex items-center gap-1"><Zap className="h-4 w-4 text-amber-500" /> Within {lahoreMin}-{lahoreMax} Hours</span>
             ) : (
-              `📦 Expected: ${deliveryRange}`
+              <span className="flex items-center gap-1"><Package className="h-4 w-4 text-slate-500" /> Expected: {deliveryRange}</span>
             )}
           </span>
         </div>

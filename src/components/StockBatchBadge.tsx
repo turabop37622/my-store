@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
-import { API_URL } from "@/lib/db";
+import { fetchFromApi } from "@/lib/db";
 
 interface ActiveBatch {
   id: string;
@@ -23,8 +23,7 @@ export default function StockBatchBadge({ productId }: Props) {
 
   useEffect(() => {
     if (!productId) return;
-    fetch(`${API_URL}/api/stock-batches/${productId}`)
-      .then((res) => res.json())
+    fetchFromApi(`/api/stock-batches/${productId}`)
       .then((resData: StockBatchResponse) => setData(resData))
       .catch((err) => console.error("Error loading stock batch:", err));
   }, [productId]);

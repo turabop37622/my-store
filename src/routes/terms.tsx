@@ -32,7 +32,7 @@ function TermsOfService() {
 
   return (
     <main className="min-h-screen bg-[#fcfcfc] pt-32 md:pt-40 pb-24">
-      <div className="mx-auto max-w-3xl px-4 md:px-10">
+      <div className="mx-auto max-w-3xl px-4 md:px-[40px]">
         
         {/* Header */}
         <div className="text-center mb-16">

@@ -11,7 +11,7 @@ export const Route = createFileRoute("/vision-2026")({
 function VisionPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white pt-32 md:pt-40 pb-20">
-      <div className="mx-auto max-w-[1600px] px-4 md:px-10">
+      <div className="mx-auto max-w-[1920px] px-4 md:px-[40px]">
         {/* Intro */}
         <div className="max-w-4xl space-y-8 mb-24">
           <span className="text-xs font-black uppercase tracking-[0.4em] text-primary">The Future is Now</span>

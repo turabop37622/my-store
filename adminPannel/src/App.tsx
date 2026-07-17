@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Subscribers from "./pages/Subscribers";
 import Features from "./pages/Features";
 import Reviews from "./pages/Reviews";
+import ProductEditor from "./pages/ProductEditor";
 
 function isLoggedIn() {
   return !!localStorage.getItem("admin_token");
@@ -55,7 +56,6 @@ function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMobileOpen(false);
     fetchPendingCount();
-    // Poll every 30s to keep it updated
     const interval = setInterval(fetchPendingCount, 30000);
     return () => clearInterval(interval);
   }, [location.pathname]);
@@ -66,27 +66,29 @@ function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-[#f5f7f9] text-slate-900 font-sans selection:bg-black selection:text-white">
       <Toaster richColors position="top-right" />
 
-      {/* Desktop Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white fixed inset-y-0 left-0 z-50 hidden lg:flex flex-col">
-        <div className="p-6 border-b border-slate-800">
-          <Link to="/" className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-            Breezy<span className="text-emerald-400">Admin</span>
+      {/* Desktop Sidebar (Glassmorphism Light) */}
+      <aside className="w-72 bg-white/60 backdrop-blur-3xl fixed inset-y-0 left-0 z-50 hidden lg:flex flex-col border-r border-slate-200/50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+        <div className="p-8 pb-4">
+          <Link to="/" className="text-2xl font-black tracking-tighter text-slate-900 flex items-center gap-2">
+            Breezy<span className="text-slate-400">Admin</span>
           </Link>
         </div>
-        <div className="flex-1 py-6 flex flex-col gap-2 px-4">
+        <div className="flex-1 py-6 flex flex-col gap-1.5 px-6 overflow-y-auto custom-scrollbar">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to;
             return (
               <Link key={item.label} to={item.to}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${isActive ? "bg-emerald-500/10 text-emerald-400 font-bold" : "text-slate-400 hover:text-white hover:bg-slate-800/50"}`}
+                className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-300 font-bold text-sm group ${isActive ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20 translate-x-1" : "text-slate-500 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm"}`}
               >
-                <item.icon className="h-5 w-5" /> 
+                <div className={`p-1.5 rounded-xl transition-colors ${isActive ? 'bg-white/10' : 'bg-slate-100 group-hover:bg-white'}`}>
+                  <item.icon className="h-4 w-4" strokeWidth={isActive ? 2.5 : 2} /> 
+                </div>
                 <span>{item.label}</span>
                 {item.label === "Reviews" && pendingReviews > 0 && (
-                  <span className="ml-auto bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                  <span className="ml-auto bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md animate-pulse">
                     {pendingReviews}
                   </span>
                 )}
@@ -94,51 +96,53 @@ function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </div>
-        <div className="p-4 border-t border-slate-800">
-          <button onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all font-medium">
-            <LogOut className="h-5 w-5" /> Logout
+        <div className="p-6">
+          <button onClick={handleLogout} className="flex w-full items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all font-bold text-sm border border-transparent hover:border-red-100 hover:shadow-sm">
+            <LogOut className="h-4 w-4" strokeWidth={2.5} /> Logout
           </button>
         </div>
       </aside>
 
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900 text-white h-16 flex items-center justify-between px-4">
-        <Link to="/" className="text-lg font-black">Breezy<span className="text-emerald-400">Admin</span></Link>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="text-white p-2">
-          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+      {/* Mobile Header (Glassmorphism Light) */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-slate-200/60 text-slate-900 h-20 flex items-center justify-between px-6 shadow-sm">
+        <Link to="/" className="text-xl font-black tracking-tight">Breezy<span className="text-slate-400">Admin</span></Link>
+        <button onClick={() => setMobileOpen(!mobileOpen)} className="text-slate-600 p-2 hover:bg-slate-100/80 rounded-full transition-colors">
+          {mobileOpen ? <X className="h-6 w-6" strokeWidth={2.5} /> : <Menu className="h-6 w-6" strokeWidth={2.5} />}
         </button>
       </div>
 
       {/* Mobile Drawer */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <div className="absolute top-16 left-0 right-0 bg-slate-900 border-t border-slate-800 p-4 space-y-2">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => setMobileOpen(false)} />
+          <div className="absolute top-20 left-0 right-0 bg-white/90 backdrop-blur-2xl border-b border-slate-200/60 p-6 space-y-2 shadow-2xl rounded-b-[2rem]">
             {navItems.map((item) => {
               const isActive = location.pathname === item.to;
               return (
                 <Link key={item.label} to={item.to}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${isActive ? "bg-emerald-500/10 text-emerald-400 font-bold" : "text-slate-400 hover:text-white"}`}
+                  className={`flex items-center gap-3 px-4 py-4 rounded-2xl transition-all font-bold text-sm ${isActive ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/80"}`}
                 >
-                  <item.icon className="h-5 w-5" /> 
+                  <item.icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 2} /> 
                   <span>{item.label}</span>
                   {item.label === "Reviews" && pendingReviews > 0 && (
-                    <span className="ml-auto bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                    <span className="ml-auto bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
                       {pendingReviews}
                     </span>
                   )}
                 </Link>
               );
             })}
-            <button onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:text-red-300 font-medium">
-              <LogOut className="h-5 w-5" /> Logout
-            </button>
+            <div className="pt-4 mt-4 border-t border-slate-200/60">
+              <button onClick={handleLogout} className="flex w-full items-center justify-center gap-3 px-4 py-4 rounded-2xl text-red-600 hover:bg-red-50 font-bold text-sm transition-colors border border-transparent hover:border-red-100">
+                <LogOut className="h-5 w-5" strokeWidth={2.5} /> Logout
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-20 lg:pt-8">
-        <div className="max-w-6xl mx-auto">{children}</div>
+      <main className="flex-1 lg:ml-72 p-4 md:p-8 pt-24 lg:pt-10">
+        <div className="max-w-7xl mx-auto">{children}</div>
       </main>
     </div>
   )
@@ -146,9 +150,16 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <>
+    <Toaster position="top-right" richColors />
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/products/edit/:id" element={
+          <ProtectedRoute>
+            <ProductEditor />
+          </ProtectedRoute>
+        } />
         <Route path="/*" element={
           <ProtectedRoute>
             <Layout>
@@ -166,5 +177,6 @@ export default function App() {
         } />
       </Routes>
     </BrowserRouter>
+    </>
   )
 }

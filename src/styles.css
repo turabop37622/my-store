@@ -1,7 +1,7 @@
-@import "tailwindcss" source(none);
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
 @source "../src";
 @import "tw-animate-css";
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -20,6 +20,7 @@
  */
 
 @theme inline {
+  --font-sans: 'Inter', sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -127,6 +128,7 @@
   * {
     border-color: var(--border);
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    font-family: 'Poppins', sans-serif !important;
   }
 
   body {
@@ -134,4 +136,23 @@
     color: var(--color-foreground);
     font-family: 'Poppins', sans-serif;
   }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

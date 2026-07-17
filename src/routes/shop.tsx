@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ProductCard } from "@/components/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutGrid, Watch, Headphones, Headset, Speaker, Cable } from "lucide-react";
 
 const SearchSchema = z.object({
   category: z.any().optional(),
@@ -12,7 +12,14 @@ const SearchSchema = z.object({
   q: z.string().optional(),
 });
 
-const CATEGORIES = ["All", "Smart Watches", "Earbuds", "Headphones", "Speakers", "Accessories"];
+const CATEGORIES = [
+  { name: "All", icon: LayoutGrid },
+  { name: "Smart Watches", icon: Watch },
+  { name: "Earbuds", icon: Headphones },
+  { name: "Headphones", icon: Headset },
+  { name: "Speakers", icon: Speaker },
+  { name: "Accessories", icon: Cable },
+];
 const ITEMS_PER_PAGE = 15;
 import { API_URL } from "@/lib/db";
 
@@ -33,9 +40,15 @@ function Shop() {
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/products`);
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        const res = await fetch(`${API_URL}/api/products`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.error("Error fetching products in shop:", err);
+        return [];
+      }
     },
   });
 
@@ -65,51 +78,60 @@ function Shop() {
 
   return (
     <main className="min-h-screen bg-background pt-32 md:pt-40 pb-20">
-      <div className="mx-auto max-w-[1600px] px-4 md:px-10">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8 py-12 border-b border-white/5">
-          <div className="space-y-2">
-            <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
-              {q ? `Search: "${q}"` : category || "Shop All"} <span className="text-primary/80">Products</span>
+      <div className="mx-auto max-w-[1920px] px-4 md:px-[40px]">
+        <div className="flex flex-col gap-10 py-12 md:py-20 border-b border-border/40">
+          <div className="space-y-4 text-center md:text-left max-w-4xl">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-normal tracking-tighter text-neutral-900 leading-none">
+              {q ? `Search: "${q}"` : category || "All Products"}.
             </h1>
-            <p className="text-muted-foreground text-sm font-medium">
+            <p className="text-neutral-500 text-lg md:text-xl font-medium tracking-tight">
               Showing {filtered.length} premium tech essentials
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {CATEGORIES.map((c) => (
-              <Link
-                key={c}
-                to="/shop"
-                search={{ category: c === "All" ? undefined : c, page: 1 }}
-                className={`px-6 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all ${(category === c || (c === "All" && !category))
-                    ? "bg-primary text-white shadow-lg shadow-primary/20 scale-105"
-                    : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                  }`}
-              >
-                {c}
-              </Link>
-            ))}
+          <div className="w-full overflow-x-auto pb-2 scrollbar-none mt-4 md:mt-10">
+            <div className="inline-flex items-center gap-8 border-b border-neutral-200 w-max min-w-full">
+              {CATEGORIES.map((c) => {
+                const isActive = category === c.name || (c.name === "All" && !category);
+                return (
+                  <Link
+                    key={c.name}
+                    to="/shop"
+                    search={{ category: c.name === "All" ? undefined : c.name, page: 1 }}
+                    className={`pb-5 text-[13px] md:text-sm font-semibold tracking-widest uppercase transition-colors relative whitespace-nowrap ${
+                      isActive
+                        ? "text-neutral-900"
+                        : "text-neutral-400 hover:text-neutral-900"
+                    }`}
+                  >
+                    {c.name}
+                    {isActive && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-neutral-900 rounded-t-full" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-16 mt-12">
             {Array.from({ length: 10 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-square rounded-2xl" />
+              <Skeleton key={i} className="aspect-[4/5] rounded-[24px]" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-24 bg-white/5 rounded-[2rem] border border-white/5">
-            <h3 className="text-lg font-bold uppercase">No products found</h3>
-            <p className="text-white/40 mt-2">Try adjusting your filters or category selection.</p>
-            <Button asChild variant="outline" className="rounded-full px-8 mt-4">
+          <div className="text-center py-32">
+            <h3 className="text-3xl font-normal tracking-tight text-neutral-900">No products found</h3>
+            <p className="text-neutral-500 mt-3 text-lg">Try adjusting your filters or category selection.</p>
+            <Button asChild variant="outline" className="rounded-full px-8 mt-8 h-12">
               <Link to="/shop">View All Products</Link>
             </Button>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-12">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-16 mt-16">
               {paginatedItems.map((p: any) => (
                 p && <ProductCard key={p?.id} product={p} />
               ))}

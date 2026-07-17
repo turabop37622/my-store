@@ -11,9 +11,53 @@ if (typeof process !== 'undefined' && process.release?.name === 'node') {
 }
 
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow but consider restricting in strictly closed prod
+    }
+  }
+}));
+
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
+
+// Simple In-Memory Rate Limiter
+const rateLimitMap = new Map();
+function rateLimiter(limit, windowMs) {
+  return (req, res, next) => {
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const now = Date.now();
+    let record = rateLimitMap.get(ip);
+    if (!record) {
+      rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+    } else {
+      if (now > record.resetTime) {
+        record.count = 1;
+        record.resetTime = now + windowMs;
+      } else {
+        record.count++;
+      }
+    }
+    if (rateLimitMap.get(ip).count > limit) {
+      return res.status(429).json({ error: "Too many requests. Please try again later." });
+    }
+    next();
+  };
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of rateLimitMap.entries()) {
+    if (now > record.resetTime) rateLimitMap.delete(ip);
+  }
+}, 60000);
 
 let client = null;
 let dbPromise = null;
@@ -296,23 +340,20 @@ app.get('/api/products', async (req, res) => {
     if (featured === 'true') filter.is_featured = true;
     const products = await database.collection("products").find(filter).project({ details: 0 }).toArray();
     res.set('Cache-Control', 'public, max-age=300');
-    res.json(products.map(p => ({
-      id: p._id.toString(),
-      name: p.name,
-      slug: p.slug,
-      price: p.price,
-      original_price: p.original_price || null,
-      category: p.category,
-      tagline: p.tagline || '',
-      image_url: p.image_url || '',
-      rating: p.rating || 4.5,
-      is_featured: p.is_featured || false,
-      stock: p.stock !== undefined ? Number(p.stock) : 100,
-      is_active: p.is_active !== false,
-      images: p.images || (p.image_url ? [p.image_url] : []),
-      qty2_discount_percent: p.qty2_discount_percent !== undefined ? p.qty2_discount_percent : 3,
-      qty3_discount_percent: p.qty3_discount_percent !== undefined ? p.qty3_discount_percent : 5
-    })));
+    res.json(products.map(p => {
+      const { _id, ...rest } = p;
+      return {
+        id: _id.toString(),
+        ...rest,
+        rating: rest.rating || 4.5,
+        is_featured: rest.is_featured || false,
+        stock: rest.stock !== undefined ? Number(rest.stock) : 100,
+        is_active: rest.is_active !== false,
+        images: rest.images || (rest.image_url ? [rest.image_url] : []),
+        qty2_discount_percent: rest.qty2_discount_percent !== undefined ? rest.qty2_discount_percent : 3,
+        qty3_discount_percent: rest.qty3_discount_percent !== undefined ? rest.qty3_discount_percent : 5
+      };
+    }));
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -355,23 +396,17 @@ app.get('/api/products/:slug', async (req, res) => {
     const database = await connectDB();
     const product = await database.collection("products").findOne({ slug: req.params.slug });
     if (!product) return res.status(404).json({ error: "Product not found" });
+    const { _id, ...rest } = product;
     res.json({
-      id: product._id.toString(),
-      name: product.name,
-      slug: product.slug,
-      price: product.price,
-      original_price: product.original_price || null,
-      category: product.category,
-      tagline: product.tagline || '',
-      image_url: product.image_url || '',
-      rating: product.rating || 4.5,
-      is_featured: product.is_featured || false,
-      stock: product.stock !== undefined ? Number(product.stock) : 100,
-      is_active: product.is_active !== false,
-      details: product.details || [],
-      images: product.images || (product.image_url ? [product.image_url] : []),
-      qty2_discount_percent: product.qty2_discount_percent !== undefined ? product.qty2_discount_percent : 3,
-      qty3_discount_percent: product.qty3_discount_percent !== undefined ? product.qty3_discount_percent : 5
+      id: _id.toString(),
+      ...rest,
+      rating: rest.rating || 4.5,
+      is_featured: rest.is_featured || false,
+      stock: rest.stock !== undefined ? Number(rest.stock) : 100,
+      is_active: rest.is_active !== false,
+      images: rest.images || (rest.image_url ? [rest.image_url] : []),
+      qty2_discount_percent: rest.qty2_discount_percent !== undefined ? rest.qty2_discount_percent : 3,
+      qty3_discount_percent: rest.qty3_discount_percent !== undefined ? rest.qty3_discount_percent : 5
     });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -402,8 +437,8 @@ function getLocalMockResponse(userMessage, orderInfo) {
   return `Aapka message mil gaya hai: "${userMessage}". (Local Mock Mode Active). Agar aap apna order status check karna chahte hain to order ID likhein, ya delivery/products ke baare me poochhein!`;
 }
 
-// ─── PUBLIC SUPPORT CHAT AI ────────────────────────
-app.post('/api/support-chat', async (req, res) => {
+// ─── PUBLIC SUPPORT CHAT ────────────────────────
+app.post('/api/support-chat', rateLimiter(15, 60000), async (req, res) => {
   try {
     const database = await connectDB();
     const { messages } = req.body;
@@ -546,7 +581,7 @@ app.post('/api/support-chat', async (req, res) => {
 });
 
 // ─── PUBLIC ORDER SUBMIT ───────────────────────────
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', rateLimiter(5, 60000), async (req, res) => {
   try {
     const database = await connectDB();
     const { customer_name, phone, email, city, address, postal_code, notes, discount_code, items, latitude, longitude, landmark } = req.body;
@@ -879,31 +914,21 @@ app.get('/api/admin/products', async (req, res) => {
   try {
     const database = await connectDB();
     const products = await database.collection("products").find().sort({ created_at: -1 }).toArray();
-    res.json(products.map(p => ({
-      id: p._id.toString(),
-      name: p.name,
-      slug: p.slug,
-      price: p.price,
-      original_price: p.original_price || null,
-      stock: p.stock || 100,
-      category: p.category,
-      tagline: p.tagline || '',
-      image_url: p.image_url || '',
-      is_active: p.is_active !== false,
-      status: p.is_active !== false ? 'Active' : 'Out of Stock',
-      details: p.details || [],
-      images: p.images || (p.image_url ? [p.image_url] : []),
-      qty2_discount_percent: p.qty2_discount_percent !== undefined ? p.qty2_discount_percent : 3,
-      qty3_discount_percent: p.qty3_discount_percent !== undefined ? p.qty3_discount_percent : 5,
-      sales_baseline: p.sales_baseline || 0
-    })));
+    res.json(products.map(p => {
+      const { _id, ...rest } = p;
+      return {
+        id: _id.toString(),
+        ...rest,
+        status: rest.is_active !== false ? 'Active' : 'Out of Stock'
+      };
+    }));
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 app.post('/api/admin/products', async (req, res) => {
   try {
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline, testimonials, sound_tabs, features, specs } = req.body;
     const result = await database.collection("products").insertOne({
       name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
       price: Number(price), original_price: original_price ? Number(original_price) : null,
@@ -913,7 +938,11 @@ app.post('/api/admin/products', async (req, res) => {
       images: images || [],
       qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
       qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
-      sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0")
+      sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0"),
+      testimonials: testimonials || [],
+      sound_tabs: sound_tabs || [],
+      features: features || [],
+      specs: specs || []
     });
     res.json({ success: true, id: result.insertedId.toString() });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -925,7 +954,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       return res.status(400).json({ error: "Invalid product ID" });
     }
     const database = await connectDB();
-    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline } = req.body;
+    const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline, testimonials, sound_tabs, features, specs, faqs, hero_text, hero_subtitle, hero_image, hero_image_mobile, overview_text, watermark_title, watermark_text, watermark_image } = req.body;
     const updateDoc = {
       name,
       price: Number(price),
@@ -938,6 +967,19 @@ app.put('/api/admin/products/:id', async (req, res) => {
       qty2_discount_percent: qty2_discount_percent !== undefined ? Number(qty2_discount_percent) : 3,
       qty3_discount_percent: qty3_discount_percent !== undefined ? Number(qty3_discount_percent) : 5,
       sales_baseline: String(sales_baseline || "0,0,0,0,0,0,0"),
+      testimonials: testimonials || [],
+      sound_tabs: sound_tabs || [],
+      features: features || [],
+      specs: specs || [],
+      faqs: faqs || [],
+      hero_text: hero_text || name,
+      hero_subtitle: hero_subtitle || "",
+      hero_image: hero_image || "",
+      hero_image_mobile: hero_image_mobile || "",
+      overview_text: overview_text || "",
+      watermark_title: watermark_title || "",
+      watermark_text: watermark_text || "",
+      watermark_image: watermark_image || "",
       updated_at: new Date()
     };
     if (images) updateDoc.images = images;

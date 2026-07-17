@@ -260,14 +260,14 @@ export default function Features() {
   ] as const;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 slide-in-from-bottom-4">
       <div>
-        <h1 className="text-2xl lg:text-3xl font-black text-slate-900">Features Management</h1>
-        <p className="text-slate-500 mt-1">Configure advanced settings, batches, discounts, and visual charts.</p>
+        <h1 className="text-3xl lg:text-4xl font-semibold tracking-tighter text-slate-900">Features Management</h1>
+        <p className="text-slate-500 mt-1 font-medium">Configure advanced settings, batches, discounts, and visual charts.</p>
       </div>
 
       {/* Tabs Menu */}
-      <div className="flex flex-wrap border-b border-slate-200 gap-2">
+      <div className="flex flex-wrap border-b border-slate-200/60 gap-2">
         {tabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -275,16 +275,17 @@ export default function Features() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-3 border-b-2 font-semibold text-sm transition-all -mb-px ${isActive ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-900"}`}
+              className={`flex items-center gap-2 px-6 py-4 border-b-2 font-bold text-sm transition-all -mb-px ${isActive ? "border-slate-900 text-slate-900" : "border-transparent text-slate-400 hover:text-slate-900 hover:border-slate-300"}`}
             >
-              <Icon className="h-4 w-4" /> {tab.label}
+              <Icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 2} /> {tab.label}
             </button>
           );
         })}
       </div>
 
       {/* Tab Contents */}
-      <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
+      <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] border border-slate-200/60 p-8 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full blur-3xl opacity-50 pointer-events-none -z-10"></div>
         {/* --- SECTION 1: LIVE VIEWERS --- */}
         {activeTab === "viewers" && (
           <div className="space-y-6 max-w-xl">
@@ -351,9 +352,9 @@ export default function Features() {
             <button
               onClick={handleSaveSettings}
               disabled={savingSettings}
-              className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md shadow-emerald-500/10 text-sm disabled:opacity-50"
+              className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-xl shadow-slate-900/20 text-sm disabled:opacity-50 hover:-translate-y-0.5 mt-8"
             >
-              {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {savingSettings ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" strokeWidth={2.5} />}
               Save Settings
             </button>
           </div>

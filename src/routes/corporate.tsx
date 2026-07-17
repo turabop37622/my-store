@@ -12,7 +12,7 @@ export const Route = createFileRoute("/corporate")({
 function CorporatePage() {
   return (
     <main className="min-h-screen bg-background pt-32 md:pt-40 pb-20">
-      <div className="mx-auto max-w-[1600px] px-4 md:px-10">
+      <div className="mx-auto max-w-[1920px] px-4 md:px-[40px]">
         {/* Hero Section */}
         <div className="text-center space-y-6 max-w-4xl mx-auto mb-20">
           <span className="text-xs font-black uppercase tracking-[0.3em] text-primary bg-primary/10 px-4 py-2 rounded-full">B2B Solutions</span>
