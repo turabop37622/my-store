@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import hero2 from "@/assets/hero 2.png";
-import hero3 from "@/assets/hero 3.png";
-import mob1 from "@/assets/mob 1.png";
-import mob2 from "@/assets/mob 2.png";
+import hero2 from "@/assets/hero 2.jpg";
+import hero3 from "@/assets/hero 3.jpg";
+import mob1 from "@/assets/mob 1.jpg";
+import mob2 from "@/assets/mob 2.jpg";
 import { useHeaderTheme } from "@/lib/header-theme";
 import { listProducts, type Product } from "@/lib/products.functions";
 import { ProductCard } from "@/components/ProductCard";
