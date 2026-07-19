@@ -71,14 +71,14 @@ export default function SalesGraph({ productId }: Props) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-indigo-500 animate-pulse" /> Product Demand Insights
+            <TrendingUp className="h-5 w-5 text-[#00a651] animate-pulse" /> Product Demand Insights
           </h3>
           <p className="text-xs text-slate-500 mt-1">Real-time purchase trends for this product</p>
         </div>
 
         {/* Dynamic Count-Up Bubble */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-orange-50 border border-orange-100 text-orange-600 font-extrabold text-sm shadow-sm animate-bounce">
-          <Flame className="h-4 w-4 fill-current text-orange-500" />
+        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#00a651]/10 border border-[#00a651]/20 text-[#00a651] font-extrabold text-sm shadow-sm animate-bounce">
+          <Flame className="h-4 w-4 fill-current text-[#00a651]" />
           <span>{animatedToday} sold today</span>
         </div>
       </div>

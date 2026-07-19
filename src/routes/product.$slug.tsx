@@ -458,7 +458,7 @@ function ProductPage() {
 
                 {/* Price */}
                 <div className="flex items-baseline gap-3">
-                  <span className="text-3xl font-medium text-neutral-900">Rs.{originalUnitPrice.toLocaleString()}</span>
+                  <span className="text-3xl font-semibold text-neutral-900">Rs.{originalUnitPrice.toLocaleString()}</span>
                   {product.original_price && <span className="text-lg text-neutral-400 line-through">Rs.{Number(product.original_price).toLocaleString()}</span>}
                 </div>
 
@@ -503,7 +503,7 @@ function ProductPage() {
                   <div className="px-5 pt-5 pb-3 flex items-center justify-between">
                     <div>
                       <div className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mb-1">Limited Time Offer</div>
-                      <div className="text-2xl font-black text-neutral-900 leading-none">
+                      <div className="text-2xl font-semibold text-neutral-900 leading-none">
                         Rs {(qty === 1 ? price1 : qty === 2 ? price2 * 2 : price3 * qty).toLocaleString()}
                         <span className="text-sm font-bold text-neutral-400 ml-2">total</span>
                       </div>
@@ -511,7 +511,7 @@ function ProductPage() {
                     </div>
                     {discount && (
                       <div className="text-center">
-                        <div className="text-2xl font-black text-[#00a651] leading-none">{discount}%</div>
+                        <div className="text-2xl font-semibold text-[#00a651] leading-none">{discount}%</div>
                         <div className="text-[9px] font-extrabold text-neutral-400 uppercase tracking-widest">OFF</div>
                       </div>
                     )}
@@ -532,13 +532,13 @@ function ProductPage() {
                               {isActive && <div className="h-2.5 w-2.5 rounded-full bg-white" />}
                             </div>
                             <div>
-                              <div className={`text-xs font-extrabold ${isActive ? "text-white" : "text-neutral-900"}`}>Buy {deal.qty === 3 ? "3+" : deal.qty} — {deal.label}</div>
-                              <div className={`text-[10px] font-semibold mt-0.5 ${isActive ? "text-white/80" : "text-neutral-400"}`}>{deal.sub}</div>
+                              <div className={`text-xs font-normal ${isActive ? "text-white" : "text-neutral-900"}`}>Buy {deal.qty === 3 ? "3+" : deal.qty} — {deal.label}</div>
+                              <div className={`text-[10px] font-normal mt-0.5 ${isActive ? "text-white/80" : "text-neutral-400"}`}>{deal.sub}</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <div className={`text-sm font-black ${isActive ? "text-white" : "text-neutral-900"}`}>Rs {deal.price.toLocaleString()}<span className={`text-[10px] font-semibold ml-0.5 ${isActive ? "text-white/80" : "text-neutral-400"}`}>/unit</span></div>
-                            {deal.tag && <span className={`text-[8.5px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-sm ${isActive ? "bg-white text-[#00a651]" : deal.color === "emerald" ? "bg-emerald-50 text-[#00a651] border border-emerald-100" : "bg-red-50 text-red-600 border border-red-100"}`}>{deal.tag}</span>}
+                            <div className={`text-sm font-normal ${isActive ? "text-white" : "text-neutral-900"}`}>Rs {deal.price.toLocaleString()}<span className={`text-[10px] font-normal ml-0.5 ${isActive ? "text-white/80" : "text-neutral-400"}`}>/unit</span></div>
+                            {deal.tag && <span className={`text-[8.5px] font-normal uppercase tracking-widest px-2.5 py-1 rounded-full shadow-sm ${isActive ? "bg-white text-[#00a651]" : deal.color === "emerald" ? "bg-emerald-50 text-[#00a651] border border-emerald-100" : "bg-red-50 text-red-600 border border-red-100"}`}>{deal.tag}</span>}
                           </div>
                         </button>
                       );

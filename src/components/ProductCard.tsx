@@ -106,7 +106,7 @@ export function ProductCard({ product }: { product: Product }) {
         
         <div className="mt-auto pt-4 flex items-center justify-between">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="font-bold text-lg text-neutral-900">Rs {price.toLocaleString()}</span>
+            <span className="font-semibold text-lg text-neutral-900">Rs {price.toLocaleString()}</span>
             {originalPrice > price && (
               <span className="text-[13px] text-neutral-400 line-through font-medium">
                 Rs {originalPrice.toLocaleString()}

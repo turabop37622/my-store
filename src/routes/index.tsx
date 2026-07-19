@@ -1,10 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import hero2 from "@/assets/hero 2.jpg";
 import hero3 from "@/assets/hero 3.jpg";
 import mob1 from "@/assets/mob 1.jpg";
 import mob2 from "@/assets/mob 2.jpg";
+import best1 from "@/assets/best 1.png";
+import best2 from "@/assets/best 2.jpg";
+import best3 from "@/assets/best 3.jpg";
 import { useHeaderTheme } from "@/lib/header-theme";
 import { listProducts, type Product } from "@/lib/products.functions";
 import { ProductCard } from "@/components/ProductCard";
@@ -45,9 +48,9 @@ function Index() {
 
       {/* --- Bento Category Grid --- */}
       <section className="mx-auto max-w-[1920px] px-4 md:px-[40px] py-16 md:py-24">
-        <div className="mb-10 text-center md:text-left">
-          <h2 className="text-3xl md:text-5xl font-semibold text-neutral-900 uppercase tracking-tight">Explore the <span className="text-[#00a651]">Ecosystem</span></h2>
-          <p className="text-neutral-500 font-medium mt-2">Premium tech designed for your lifestyle.</p>
+        <div className="mb-16 text-center md:text-left space-y-4">
+          <h2 className="text-5xl md:text-7xl lg:text-8xl font-normal text-neutral-900 tracking-tighter leading-none">Explore the <span className="text-[#00a651]">Ecosystem.</span></h2>
+          <p className="text-xl text-neutral-500 font-light tracking-tight">Premium tech designed for your lifestyle.</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 auto-rows-[200px] md:auto-rows-[250px]">
@@ -161,19 +164,19 @@ function Index() {
         <div className="mx-auto max-w-[1920px] px-4 md:px-[40px]">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-8">
             <div className="flex flex-col items-center md:items-start text-center md:text-left md:border-l border-neutral-200 md:pl-8">
-              <ShieldCheck className="h-10 w-10 text-neutral-900 mb-8 stroke-[1.5]" />
+              <ShieldCheck className="h-10 w-10 text-[#00a651] mb-8 stroke-[1.5]" />
               <h3 className="text-2xl font-normal tracking-tight text-neutral-900 mb-4">Official Warranty.</h3>
               <p className="text-neutral-500 font-light leading-relaxed text-lg">Every product comes with a comprehensive 12-month warranty, ensuring complete peace of mind.</p>
             </div>
             
             <div className="flex flex-col items-center md:items-start text-center md:text-left md:border-l border-neutral-200 md:pl-8">
-              <Truck className="h-10 w-10 text-neutral-900 mb-8 stroke-[1.5]" />
+              <Truck className="h-10 w-10 text-[#00a651] mb-8 stroke-[1.5]" />
               <h3 className="text-2xl font-normal tracking-tight text-neutral-900 mb-4">Express Delivery.</h3>
               <p className="text-neutral-500 font-light leading-relaxed text-lg">Experience rapid nationwide shipping. Get your premium tech delivered within 24 to 48 hours.</p>
             </div>
 
             <div className="flex flex-col items-center md:items-start text-center md:text-left md:border-l border-neutral-200 md:pl-8">
-              <Lock className="h-10 w-10 text-neutral-900 mb-8 stroke-[1.5]" />
+              <Lock className="h-10 w-10 text-[#00a651] mb-8 stroke-[1.5]" />
               <h3 className="text-2xl font-normal tracking-tight text-neutral-900 mb-4">Secure Payment.</h3>
               <p className="text-neutral-500 font-light leading-relaxed text-lg">100% secure Cash on Delivery. Pay only when you receive your order at your doorstep.</p>
             </div>
@@ -186,9 +189,7 @@ function Index() {
         <div className="mx-auto max-w-[1920px] px-4 md:px-[40px] flex flex-col items-center text-center">
           <div className="max-w-4xl space-y-8">
             <span className="text-neutral-400 text-sm tracking-[0.3em] uppercase">The BreezyGo Philosophy</span>
-            <h2 className="text-4xl md:text-6xl lg:text-7xl font-normal tracking-tighter text-neutral-900 leading-[1.1]">
-              We believe that premium technology should be beautifully designed, meticulously crafted, and accessible to everyone.
-            </h2>
+            <ScrollRevealText text="We believe that premium technology should be beautifully designed, meticulously crafted, and accessible to everyone." />
             <div className="w-px h-24 bg-neutral-300 mx-auto mt-16"></div>
           </div>
         </div>
@@ -365,22 +366,28 @@ function HeroCarousel({ banners, loading }: { banners: Product[]; loading: boole
       </div>
     </section>
   );
-}
-
-function FlagshipSlider({ banners }: { banners: Product[] }) {
+}function FlagshipSlider({ banners }: { banners: Product[] }) {
   const [current, setCurrent] = useState(0);
 
+  const localBanners = [
+    { img: best1, product: banners?.[0] },
+    { img: best2, product: banners?.[1] },
+    { img: best3, product: banners?.[2] },
+  ].filter(b => b.product !== undefined);
+
+  const displayBanners = localBanners.length > 0 ? localBanners : [
+    { img: best1, product: null },
+    { img: best2, product: null },
+    { img: best3, product: null },
+  ];
+
   useEffect(() => {
-    if (!banners || banners.length <= 1) return;
+    if (displayBanners.length <= 1) return;
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % banners.length);
+      setCurrent((prev) => (prev + 1) % displayBanners.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [banners]);
-
-  if (!banners || banners.length === 0) return null;
-
-  const displayBanners = banners.slice(0, 4);
+  }, [displayBanners.length]);
 
   const nextSlide = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -396,7 +403,7 @@ function FlagshipSlider({ banners }: { banners: Product[] }) {
 
   return (
     <section className="relative w-full max-w-[1920px] mx-auto px-4 md:px-[40px] py-4 md:py-6 select-none">
-      <div className="relative w-full h-[60vh] md:h-[700px] overflow-hidden rounded-[2rem] md:rounded-[3rem] bg-gradient-to-br from-[#ebece9] to-[#d4d6d1] shadow-lg flex items-center group">
+      <div className="relative w-full h-[60vh] md:h-[700px] overflow-hidden rounded-[2rem] md:rounded-[3rem] bg-[#f5f5f5] shadow-lg flex items-center group">
         
         {/* Top Hanging "BEST SELLER" Badge */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-white px-8 md:px-12 py-2 md:py-3 rounded-b-[1rem] shadow-sm z-30 font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs flex gap-2 items-center">
@@ -404,64 +411,39 @@ function FlagshipSlider({ banners }: { banners: Product[] }) {
           <span className="text-[#E52823] font-bold">SELLER</span>
         </div>
 
-        {displayBanners.map((product, i) => (
-          <Link
-            to="/product/$slug"
-            params={{ slug: product.slug }}
-            key={product.id || i}
-            className={`absolute inset-0 w-full h-full block transition-opacity duration-1000 ease-in-out cursor-pointer ${i === current ? "opacity-100 z-20" : "opacity-0 z-10 pointer-events-none"}`}
-          >
-            <div className="relative z-10 w-full h-full flex flex-col md:flex-row items-center justify-between p-6 md:p-16 lg:p-24">
-              
-              {/* Product Image (Left) */}
-              <div className={`w-full md:w-1/2 h-[45%] md:h-full relative flex items-center justify-center transition-all duration-1000 delay-100 ${i === current ? "translate-x-0 opacity-100" : "-translate-x-12 opacity-0"}`}>
-                {product.images?.[0] ? (
-                  <img 
-                    src={product.images[0]} 
-                    alt={product.name} 
-                    className="relative z-10 w-auto h-[90%] md:h-[110%] object-contain mix-blend-multiply drop-shadow-[10px_20px_30px_rgba(0,0,0,0.15)] hover:scale-105 transition-transform duration-700"
-                  />
-                ) : (
-                  <div className="w-[60%] aspect-square bg-neutral-300 rounded-3xl animate-pulse shadow-xl"></div>
-                )}
-              </div>
-
-              {/* Glass Card Content (Right) */}
-              <div className={`w-full md:w-5/12 mt-4 md:mt-0 transition-all duration-700 delay-300 ${i === current ? "translate-x-0 opacity-100" : "translate-x-12 opacity-0"}`}>
-                <div className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-[1.5rem] p-6 md:p-10 shadow-2xl text-left">
-                  
-                  {/* Titles */}
-                  <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter uppercase leading-[0.9] text-white">
-                    {product.name.split(' ')[0]}
-                  </h2>
-                  <h3 className="text-white/80 text-[10px] md:text-sm font-light tracking-[0.6em] md:tracking-[0.8em] uppercase mt-2 mb-6">
-                    {product.category || product.name.split(' ').slice(1).join(' ') || "PREMIUM"}
-                  </h3>
-
-                  {/* Badges / Tech Specs Block (matching the image) */}
-                  <div className="flex flex-col items-start gap-4 mt-6 pt-6 border-t border-white/10">
-                    <div className="flex bg-white/10 backdrop-blur-md rounded border border-white/20 overflow-hidden">
-                       <div className="bg-white text-black px-2 py-1.5 flex flex-col items-center justify-center">
-                         <span className="text-[10px] font-black leading-none">5GEN</span>
-                       </div>
-                       <div className="px-3 py-1 flex flex-col justify-center text-white">
-                         <span className="text-[8px] font-medium leading-none tracking-widest uppercase">Acoustic</span>
-                         <span className="text-[10px] font-bold leading-none uppercase">Engine</span>
-                       </div>
-                    </div>
-                    <div className="w-full hidden md:block">
-                      <p className="text-white/60 text-[10px] md:text-xs leading-relaxed font-light">
-                        A refined evolution in sound engineering, built around precision-grade drivers that deliver depth, clarity and control. It produces immersive sound with powerful, well-defined bass while intelligently adapting to what you're listening to, ensuring balance across every frequency.
-                      </p>
-                    </div>
-                  </div>
-                  
-                </div>
-              </div>
-
+        {displayBanners.map((slide, i) => {
+          const content = (
+            <div className="relative w-full h-full">
+              <img 
+                src={slide.img} 
+                alt={`Best Seller ${i + 1}`} 
+                className="w-full h-full object-cover" 
+              />
             </div>
-          </Link>
-        ))}
+          );
+
+          if (slide.product) {
+            return (
+              <Link
+                to="/product/$slug"
+                params={{ slug: slide.product.slug }}
+                key={i}
+                className={`absolute inset-0 w-full h-full block transition-opacity duration-1000 ease-in-out cursor-pointer ${i === current ? "opacity-100 z-20" : "opacity-0 z-10 pointer-events-none"}`}
+              >
+                {content}
+              </Link>
+            );
+          }
+
+          return (
+            <div
+              key={i}
+              className={`absolute inset-0 w-full h-full block transition-opacity duration-1000 ease-in-out ${i === current ? "opacity-100 z-20" : "opacity-0 z-10 pointer-events-none"}`}
+            >
+              {content}
+            </div>
+          );
+        })}
 
         {/* Navigation Arrows (Left / Right Edges) */}
         <button onClick={prevSlide} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 bg-white/60 hover:bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-neutral-600 transition-all z-30 opacity-0 group-hover:opacity-100 shadow-md">
@@ -471,18 +453,80 @@ function FlagshipSlider({ banners }: { banners: Product[] }) {
            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
         </button>
 
-        {/* Carousel Indicators (Bottom Left) */}
-        <div className="absolute bottom-6 md:bottom-10 left-6 md:left-12 flex items-center gap-2 z-30 pointer-events-auto">
+        {/* Carousel Indicators (Bottom Center) */}
+        <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30 pointer-events-auto">
           {displayBanners.map((_, i) => (
             <button
               key={i}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrent(i); }}
-              className={`transition-all duration-300 rounded-full ${i === current ? "h-2 w-6 md:w-8 bg-[#E52823]" : "h-2 w-2 bg-[#D9D9D9] hover:bg-neutral-300"}`}
+              className={`transition-all duration-300 rounded-full ${i === current ? "h-2 w-6 md:w-8 bg-[#E52823]" : "h-2 w-2 bg-white/50 hover:bg-white"}`}
               aria-label={`Go to slide ${i + 1}`}
             />
           ))}
         </div>
       </div>
     </section>
+  );
+}
+
+function ScrollRevealText({ text }: { text: string }) {
+  const containerRef = useRef<HTMLHeadingElement>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      
+      const elementHeight = rect.height;
+      const startReveal = windowHeight - 100;
+      const endReveal = windowHeight * 0.2;
+      const totalRange = startReveal - endReveal;
+      
+      const currentPos = startReveal - rect.top;
+      let progress = currentPos / totalRange;
+      progress = Math.max(0, Math.min(1, progress));
+      setScrollProgress(progress);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const words = text.split(" ");
+  
+  return (
+    <h2 
+      ref={containerRef}
+      className="text-4xl md:text-6xl lg:text-7xl font-normal tracking-tighter text-neutral-900 leading-[1.1] max-w-4xl mx-auto"
+    >
+      {words.map((word, index) => {
+        const wordCount = words.length;
+        const startThreshold = index / wordCount;
+        const endThreshold = (index + 2) / wordCount; 
+        
+        let opacity = 0.15;
+        if (scrollProgress > startThreshold) {
+          const factor = (scrollProgress - startThreshold) / (endThreshold - startThreshold);
+          opacity = 0.15 + (Math.min(1, factor) * 0.85);
+        }
+
+        const cleanWord = word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+        const isHighlighted = cleanWord === "premium" || cleanWord === "technology" || cleanWord === "designed";
+
+        return (
+          <span 
+            key={index} 
+            style={{ opacity }}
+            className={`inline-block mr-[0.25em] transition-opacity duration-150 ease-out ${isHighlighted ? "text-[#00a651] font-semibold" : ""}`}
+          >
+            {word}
+          </span>
+        );
+      })}
+    </h2>
   );
 }

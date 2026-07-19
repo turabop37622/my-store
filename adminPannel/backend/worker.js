@@ -959,7 +959,7 @@ export default {
         const id = path.replace('/api/admin/products/', '');
         if (!ObjectId.isValid(id)) return jsonResponse({ error: "Invalid product ID" }, 400);
         const db = await getDB();
-        const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline, testimonials, sound_tabs, features, specs, faqs, hero_text, hero_subtitle, hero_image, hero_image_mobile, overview_text, watermark_title, watermark_text } = await request.json();
+        const { name, slug, price, original_price, category, tagline, image_url, stock, is_active, details, images, qty2_discount_percent, qty3_discount_percent, sales_baseline, testimonials, sound_tabs, features, specs, faqs, hero_text, hero_subtitle, hero_image, hero_image_mobile, overview_text, watermark_title, watermark_text, watermark_image } = await request.json();
         const updateDoc = {
           name, price: Number(price),
           original_price: original_price ? Number(original_price) : null,
