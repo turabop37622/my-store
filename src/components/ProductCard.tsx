@@ -94,10 +94,10 @@ export function ProductCard({ product }: { product: Product }) {
             >
               {name}
             </Link>
-            <p className="text-[13px] text-neutral-500 mt-1 line-clamp-1 font-medium">{product?.tagline || "Premium Tech Essential"}</p>
+            <p className="text-[13px] text-neutral-600 mt-1 line-clamp-1 font-medium">{product?.tagline || "Premium Tech Essential"}</p>
           </div>
           {product?.rating && (
-            <div className="flex items-center gap-1 bg-neutral-100 px-2 py-1 rounded-md text-xs text-neutral-600 font-semibold shrink-0">
+            <div className="flex items-center gap-1 bg-neutral-200 px-2 py-1 rounded-md text-xs text-neutral-700 font-semibold shrink-0">
               <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
               {Number(product.rating).toFixed(1)}
             </div>
@@ -108,7 +108,7 @@ export function ProductCard({ product }: { product: Product }) {
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="font-semibold text-lg text-neutral-900">Rs {price.toLocaleString()}</span>
             {originalPrice > price && (
-              <span className="text-[13px] text-neutral-400 line-through font-medium">
+              <span className="text-[13px] text-neutral-500 line-through font-medium">
                 Rs {originalPrice.toLocaleString()}
               </span>
             )}
@@ -117,7 +117,8 @@ export function ProductCard({ product }: { product: Product }) {
           {/* Mobile Add to Cart */}
           {!isOutOfStock && (
             <button
-              className="md:hidden w-10 h-10 rounded-full bg-neutral-100 text-neutral-900 flex items-center justify-center active:scale-95 transition-transform"
+              aria-label={`Add ${name} to cart`}
+              className="md:hidden w-12 h-12 rounded-full bg-neutral-200 text-neutral-900 flex items-center justify-center active:scale-95 transition-transform"
               onClick={(e) => {
                 e.preventDefault();
                 add({

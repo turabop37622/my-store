@@ -43,14 +43,15 @@ function Index() {
   const flagshipProduct = featured.length > 0 ? featured[0] : trending[0];
 
   return (
-    <div className="bg-[#f5f5f5] min-h-screen pb-20">
+    <main className="bg-[#f5f5f5] min-h-screen pb-20">
+      <h1 className="sr-only">BreezyGo Premium Tech Store</h1>
       <HeroCarousel banners={banners} loading={isLoading} />
 
       {/* --- Bento Category Grid --- */}
       <section className="mx-auto max-w-[1920px] px-4 md:px-[40px] py-16 md:py-24">
         <div className="mb-16 text-center md:text-left space-y-4">
           <h2 className="text-5xl md:text-7xl lg:text-8xl font-normal text-neutral-900 tracking-tighter leading-none">Explore the <span className="text-[#00a651]">Ecosystem.</span></h2>
-          <p className="text-xl text-neutral-500 font-light tracking-tight">Premium tech designed for your lifestyle.</p>
+          <p className="text-xl text-neutral-600 font-light tracking-tight">Premium tech designed for your lifestyle.</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 auto-rows-[200px] md:auto-rows-[250px]">
@@ -106,7 +107,7 @@ function Index() {
         <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-8 mb-16 text-center md:text-left">
           <div className="space-y-4">
             <h2 className="text-5xl md:text-7xl lg:text-8xl font-normal text-neutral-900 tracking-tighter leading-none">New Arrivals.</h2>
-            <p className="text-xl text-neutral-500 font-light tracking-tight">The latest innovations, just landed.</p>
+            <p className="text-xl text-neutral-600 font-light tracking-tight">The latest innovations, just landed.</p>
           </div>
           <Link to="/shop" className="text-neutral-900 font-medium tracking-wide text-sm hover:text-neutral-500 transition-colors flex items-center gap-2 border-b border-neutral-200 pb-1">
             Shop all new <ArrowRight className="w-4 h-4" />
@@ -137,7 +138,7 @@ function Index() {
         <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-8 mb-16 text-center md:text-left">
           <div className="space-y-4">
             <h2 className="text-5xl md:text-7xl lg:text-8xl font-normal text-neutral-900 tracking-tighter leading-none">Trending.</h2>
-            <p className="text-xl text-neutral-500 font-light tracking-tight">Our most popular tech essentials right now.</p>
+            <p className="text-xl text-neutral-600 font-light tracking-tight">Our most popular tech essentials right now.</p>
           </div>
           <Link to="/shop" className="text-neutral-900 font-medium tracking-wide text-sm hover:text-neutral-500 transition-colors flex items-center gap-2 border-b border-neutral-200 pb-1">
             Explore the collection <ArrowRight className="w-4 h-4" />
@@ -165,19 +166,19 @@ function Index() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-8">
             <div className="flex flex-col items-center md:items-start text-center md:text-left md:border-l border-neutral-200 md:pl-8">
               <ShieldCheck className="h-10 w-10 text-[#00a651] mb-8 stroke-[1.5]" />
-              <h3 className="text-2xl font-normal tracking-tight text-neutral-900 mb-4">Official Warranty.</h3>
+              <h2 className="text-2xl font-normal tracking-tight text-neutral-900 mb-4">Official Warranty.</h2>
               <p className="text-neutral-500 font-light leading-relaxed text-lg">Every product comes with a comprehensive 12-month warranty, ensuring complete peace of mind.</p>
             </div>
             
             <div className="flex flex-col items-center md:items-start text-center md:text-left md:border-l border-neutral-200 md:pl-8">
               <Truck className="h-10 w-10 text-[#00a651] mb-8 stroke-[1.5]" />
-              <h3 className="text-2xl font-normal tracking-tight text-neutral-900 mb-4">Express Delivery.</h3>
+              <h2 className="text-2xl font-normal tracking-tight text-neutral-900 mb-4">Express Delivery.</h2>
               <p className="text-neutral-500 font-light leading-relaxed text-lg">Experience rapid nationwide shipping. Get your premium tech delivered within 24 to 48 hours.</p>
             </div>
 
             <div className="flex flex-col items-center md:items-start text-center md:text-left md:border-l border-neutral-200 md:pl-8">
               <Lock className="h-10 w-10 text-[#00a651] mb-8 stroke-[1.5]" />
-              <h3 className="text-2xl font-normal tracking-tight text-neutral-900 mb-4">Secure Payment.</h3>
+              <h2 className="text-2xl font-normal tracking-tight text-neutral-900 mb-4">Secure Payment.</h2>
               <p className="text-neutral-500 font-light leading-relaxed text-lg">100% secure Cash on Delivery. Pay only when you receive your order at your doorstep.</p>
             </div>
           </div>
@@ -231,7 +232,7 @@ function Index() {
           </div>
         </div>
       </section>
-    </div>
+    </main>
   );
 }
 
@@ -354,13 +355,16 @@ function HeroCarousel({ banners, loading }: { banners: Product[]; loading: boole
           </div>
         ))}
 
-        <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex gap-3 z-30 pointer-events-auto">
+        <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex gap-1 z-30 pointer-events-auto">
           {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
-              className={`transition-all duration-300 rounded-full shadow-lg ${i === current ? "h-1.5 w-8 md:w-10 bg-white" : "h-1.5 w-1.5 bg-white/30 hover:bg-white/50"}`}
-            />
+              aria-label={`Go to slide ${i + 1}`}
+              className="p-3 focus:outline-none flex items-center justify-center"
+            >
+              <div className={`transition-all duration-300 rounded-full shadow-lg ${i === current ? "h-1.5 w-8 md:w-10 bg-white" : "h-1.5 w-1.5 bg-white/30 hover:bg-white/50"}`} />
+            </button>
           ))}
         </div>
       </div>
@@ -446,22 +450,24 @@ function HeroCarousel({ banners, loading }: { banners: Product[]; loading: boole
         })}
 
         {/* Navigation Arrows (Left / Right Edges) */}
-        <button onClick={prevSlide} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 bg-white/60 hover:bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-neutral-600 transition-all z-30 opacity-0 group-hover:opacity-100 shadow-md">
+        <button aria-label="Previous slide" onClick={prevSlide} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 bg-white/60 hover:bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-neutral-600 transition-all z-30 opacity-0 group-hover:opacity-100 shadow-md">
            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </button>
-        <button onClick={nextSlide} className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 bg-white/60 hover:bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-neutral-600 transition-all z-30 opacity-0 group-hover:opacity-100 shadow-md">
+        <button aria-label="Next slide" onClick={nextSlide} className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 bg-white/60 hover:bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-neutral-600 transition-all z-30 opacity-0 group-hover:opacity-100 shadow-md">
            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
         </button>
 
         {/* Carousel Indicators (Bottom Center) */}
-        <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30 pointer-events-auto">
+        <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-1 z-30 pointer-events-auto">
           {displayBanners.map((_, i) => (
             <button
               key={i}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrent(i); }}
-              className={`transition-all duration-300 rounded-full ${i === current ? "h-2 w-6 md:w-8 bg-[#E52823]" : "h-2 w-2 bg-white/50 hover:bg-white"}`}
               aria-label={`Go to slide ${i + 1}`}
-            />
+              className="p-3 focus:outline-none flex items-center justify-center"
+            >
+              <div className={`transition-all duration-300 rounded-full ${i === current ? "h-2 w-6 md:w-8 bg-[#E52823]" : "h-2 w-2 bg-white/50 hover:bg-white"}`} />
+            </button>
           ))}
         </div>
       </div>
